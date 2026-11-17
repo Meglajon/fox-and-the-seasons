@@ -31,11 +31,13 @@ export const input = {
   bindings: clone(DEFAULT_BINDINGS),
   keys: {}, hits: {}, cur: {}, press: {}, padPrev: {},
   blocked: false, capture: null, text: null, gesture: [], anyHit: false, any: false,
+  touch: {}, touchMode: false,
   update() {
     const pad = getPad();
     const ps = {};
+    for (const a in this.touch) if (this.touch[a]) ps[a] = true;
     if (pad) {
-      for (const a in PAD) ps[a] = PAD[a].some((i) => pad.buttons[i] && pad.buttons[i].pressed);
+      for (const a in PAD) ps[a] = ps[a] || PAD[a].some((i) => pad.buttons[i] && pad.buttons[i].pressed);
       const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
       if (ax < -0.45) ps.left = true;
       if (ax > 0.45) ps.right = true;
@@ -84,7 +86,7 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => { input.keys[e.code] = false; });
 addEventListener('blur', () => { input.keys = {}; });
-addEventListener('pointerdown', () => input.gesture.forEach((f) => f()));
+addEventListener('pointerdown', () => { input.gesture.forEach((f) => f()); input.anyHit = true; });
 
 export function keyName(c) {
   if (!c) return '—';
@@ -98,7 +100,9 @@ export function keyName(c) {
   if (c.startsWith('Digit')) return c.slice(5);
   return c;
 }
-export const bindName = (a) => keyName((input.bindings[a] || [])[0]);
+const TOUCH_LABEL = { jump: 'A', sprint: 'B', up: '↑', next: '⟳', prev: '⟳', flip: '⟳', pause: 'II' };
+export const bindName = (a) =>
+  (input.touchMode && TOUCH_LABEL[a]) || (a === 'pause' ? 'Esc' : keyName((input.bindings[a] || [])[0]));
 export function setBinding(action, code) {
   for (const a in input.bindings) input.bindings[a] = input.bindings[a].filter((c) => c !== code);
   input.bindings[action] = [code];

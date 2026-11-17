@@ -86,7 +86,7 @@ export class TitleScene {
     text(ctx, 'a cozy hand-drawn platformer', 96, 232, { size: 24, color: '#5a4636' });
     if (!this.ready) {
       const a = 0.6 + Math.sin(this.t * 3) * 0.4;
-      text(ctx, 'Press any key to begin', 260, 330, { size: 32, align: 'center', alpha: a, outline: '#fffaf0' });
+      text(ctx, input.touchMode ? 'Tap to begin' : 'Press any key to begin', 260, 330, { size: 32, align: 'center', alpha: a, outline: '#fffaf0' });
     }
     text(ctx, 'Art and music made entirely in code', W - 20, H - 16, { size: 18, align: 'right', color: '#5a4636' });
   }

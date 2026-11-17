@@ -34,6 +34,11 @@ Then open <http://localhost:8080>.
 
 Every key can be changed in the **settings cabinet** (Controls drawer).
 
+**On phones and tablets** on-screen controls appear automatically: a direction pad on the left, and
+**A** (jump), **B** (run / carry), **↑** (use) and **⟳** (season) on the right. Hold the phone upright and
+the controls sit below the game; turn it sideways and they move into columns either side of the game.
+You can switch them on or off in the settings cabinet (Display drawer → On-screen controls).
+
 ## What's in this build (first playable)
 
 - Title screen with 3 save slots

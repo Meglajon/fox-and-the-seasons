@@ -17,12 +17,19 @@ export function initEngine(canvas) {
   makePaper();
 }
 
-function resize() {
+// The canvas is fitted (16:9) inside the area engine.viewport() returns; touch controls shrink that area.
+export function resize() {
   const c = engine.canvas;
+  if (!c) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const s = Math.min(innerWidth / W, innerHeight / H);
-  c.style.width = Math.floor(W * s) + 'px';
-  c.style.height = Math.floor(H * s) + 'px';
+  const v = { x: 0, y: 0, w: innerWidth, h: innerHeight, ...(engine.viewport?.() || {}) };
+  const s = Math.min(v.w / W, v.h / H);
+  const cw = Math.floor(W * s), ch = Math.floor(H * s);
+  c.style.position = 'absolute';
+  c.style.left = Math.round(v.x + (v.w - cw) / 2) + 'px';
+  c.style.top = Math.round(v.y + (v.h - ch) / 2) + 'px';
+  c.style.width = cw + 'px';
+  c.style.height = ch + 'px';
   c.width = Math.max(1, Math.round(W * s * dpr));
   c.height = Math.max(1, Math.round(H * s * dpr));
   const nk = c.width / W;

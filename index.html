@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#241c1a">
 <title>Fox &amp; the Seasons</title>
 <meta name="description" content="A cozy hand-drawn platformer: help a young fox wake up the seasons of Foxhollows.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,9 +13,41 @@
 <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
 <style>
   html, body { margin: 0; height: 100%; background: #241c1a; overflow: hidden; }
-  body { display: flex; align-items: center; justify-content: center; }
+  body { position: relative; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   canvas { display: block; outline: none; }
-  #boot { position: fixed; color: #f3e6cc; font: 22px "Patrick Hand", cursive; }
+  #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #f3e6cc; font: 22px "Patrick Hand", cursive; }
+
+  /* On-screen controls (phones / tablets) */
+  #touch { display: none; }
+  body.touch { touch-action: none; overscroll-behavior: none; }
+  body.touch #touch { display: block; position: fixed; inset: 0; pointer-events: none; z-index: 5; font-family: "Patrick Hand", cursive; }
+  body.touch.portrait #touch::before {
+    content: ""; position: absolute; left: 0; right: 0; top: var(--ctrl-top, 58%); bottom: 0;
+    background: radial-gradient(ellipse at 50% 0%, #3a2d28, #241c1a 70%);
+    border-top: 3px solid #3b2a26;
+  }
+  .tc {
+    position: absolute; pointer-events: auto; touch-action: none; box-sizing: border-box;
+    border: 3px solid #3b2a26; border-radius: 50%; background: rgba(251, 243, 226, 0.92); color: #3b2a26;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.35); -webkit-touch-callout: none;
+  }
+  .tc.btn.on { background: #f2c14e; transform: translateY(3px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+  .tc .sub { font-size: 0.42em; opacity: 0.75; margin-top: 0.1em; }
+  #btnA { background: rgba(244, 163, 191, 0.95); }
+  #btnB { background: rgba(134, 196, 99, 0.95); }
+  #btnPause { border-radius: 12px; }
+  #dpad { background: rgba(251, 243, 226, 0.88); }
+  #dpad .arr { position: absolute; font-size: 0.55em; color: #7a6656; }
+  #dpad .arr.on { color: #b5503a; }
+  #dpad .u { top: 8%; left: 50%; transform: translateX(-50%); }
+  #dpad .d { bottom: 8%; left: 50%; transform: translateX(-50%); }
+  #dpad .l { left: 8%; top: 50%; transform: translateY(-50%); }
+  #dpad .r { right: 8%; top: 50%; transform: translateY(-50%); }
+  #knob {
+    position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; border-radius: 50%;
+    transform: translate(-50%, -50%); background: #e27a3f; border: 3px solid #3b2a26; box-sizing: border-box;
+  }
 </style>
 </head>
 <body>

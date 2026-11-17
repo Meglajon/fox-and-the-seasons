@@ -258,7 +258,7 @@ export class DenScene {
     text(ctx, d.name, 30, 92, { size: 24, color: '#b5503a' });
     for (let i = 0; i < Math.max(5, d.lives); i++) drawPaw(ctx, 34 + i * 22, 122, 0.85, i < d.lives, b);
     drawAcorn(ctx, 160, 88, 1, b); text(ctx, '× ' + d.acorns, 176, 96, { size: 22 });
-    const hint = `${fmt('{up}')} use   ${fmt('{sprint}')} pick up / put down   ${fmt('{flip}')} flip   Esc settings`;
+    const hint = `${fmt('{up}')} use   ${fmt('{sprint}')} pick up / put down   ${fmt('{flip}')} flip   ${fmt('{pause}')} settings`;
     panel(ctx, W / 2 - 330, H - 50, 660, 40, { seed: 83, r: 12 });
     text(ctx, hint, W / 2, H - 22, { size: 20, align: 'center', ui: true });
   }

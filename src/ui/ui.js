@@ -13,7 +13,7 @@ export function fmt(s) {
     .replaceAll('{name}', state.data?.name || 'Fennel')
     .replaceAll('{jump}', bindName('jump')).replaceAll('{next}', bindName('next'))
     .replaceAll('{prev}', bindName('prev')).replaceAll('{sprint}', bindName('sprint'))
-    .replaceAll('{up}', bindName('up')).replaceAll('{flip}', bindName('flip'));
+    .replaceAll('{up}', bindName('up')).replaceAll('{flip}', bindName('flip')).replaceAll('{pause}', bindName('pause'));
 }
 
 export function dim(ctx, a = 0.45) {
@@ -187,6 +187,16 @@ export class Choice {
 export class NameEntry {
   constructor(initial, cb, canCancel = false) { this.v = initial || ''; this.cb = cb; this.t = 0; this.canCancel = canCancel; }
   enter() {
+    if (input.touchMode) {
+      // Phones: use the system text box so the on-screen keyboard appears.
+      setTimeout(() => {
+        const v = window.prompt("What's your fox's name?", this.v);
+        if (v === null && this.canCancel) { this.close(); return; }
+        if (v !== null) this.v = v.slice(0, 12);
+        this.finish();
+      }, 80);
+      return;
+    }
     input.text = (e) => {
       if (e.key === 'Enter') { this.finish(); return true; }
       if (e.key === 'Escape') { if (this.canCancel) { this.close(); this.cbCancel = true; } return true; }

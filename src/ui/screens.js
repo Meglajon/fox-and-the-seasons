@@ -10,14 +10,18 @@ import { drawFox, FURS, FUR_ORDER, SCARVES, HATS, EXTRAS } from '../art/fox.js';
 import { FURN } from '../art/furniture.js';
 import { SEASON_COLOR } from '../art/palettes.js';
 import { grantFurniture, unlockOutfit, SEED_FUR_HOW } from '../game/progress.js';
+import { applyTouch } from '../core/touch.js';
 
 const onOff = (v) => (v ? 'On' : 'Off');
 const pct = (v) => Math.round(v * 10) + ' / 10';
 function setS(k, v) { state.settings[k] = v; saveSettings(); applySettings(); }
+const TOUCH_MODES = ['auto', 'on', 'off'];
+const cycleTouch = (v, d) => TOUCH_MODES[(TOUCH_MODES.indexOf(v || 'auto') + d + 3) % 3];
 export function applySettings() {
   engine.speed = state.settings.slow ? 0.8 : 1;
   engine.shakeOn = state.settings.shake;
   applyVolumes();
+  applyTouch();
 }
 const fmtTime = (s) => `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}m`;
 
@@ -98,6 +102,11 @@ function displayDrawer() {
       { label: 'Screen shake', value: () => onOff(s.shake), left: () => setS('shake', !s.shake), right: () => setS('shake', !s.shake) },
       { label: 'Season symbols', value: () => onOff(s.cbSymbols), left: () => setS('cbSymbols', !s.cbSymbols), right: () => setS('cbSymbols', !s.cbSymbols), hint: 'Adds a symbol to each season, so you never have to rely on colour alone' },
       { label: 'Text size', value: () => (s.textSize > 1 ? 'Large' : 'Normal'), left: () => setS('textSize', s.textSize > 1 ? 1 : 1.2), right: () => setS('textSize', s.textSize > 1 ? 1 : 1.2) },
+      {
+        label: 'On-screen controls', value: () => ({ auto: 'Auto', on: 'On', off: 'Off' }[s.touch || 'auto']),
+        left: () => setS('touch', cycleTouch(s.touch, -1)), right: () => setS('touch', cycleTouch(s.touch, 1)),
+        hint: 'Touch buttons for phones and tablets. Auto shows them only on touch screens.',
+      },
     ],
   });
 }

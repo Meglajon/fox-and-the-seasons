@@ -6,12 +6,15 @@ import { initAudio } from './audio/audio.js';
 import { drawToasts } from './ui/ui.js';
 import { applySettings } from './ui/screens.js';
 import { TitleScene } from './scenes/title.js';
+import { initTouch } from './core/touch.js';
 
 loadSettings();
 if (state.settings.bindings) input.bindings = { ...DEFAULT_BINDINGS, ...state.settings.bindings };
 initEngine(document.getElementById('game'));
 engine.drawToasts = drawToasts;
+initTouch();
 applySettings();
+addEventListener('touchend', initAudio);
 input.gesture.push(initAudio);
 addEventListener('visibilitychange', () => { if (document.hidden && state.data) saveGame(); });
 
