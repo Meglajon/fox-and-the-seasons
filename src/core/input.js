@@ -31,7 +31,7 @@ export const input = {
   bindings: clone(DEFAULT_BINDINGS),
   keys: {}, hits: {}, cur: {}, press: {}, padPrev: {},
   blocked: false, capture: null, text: null, gesture: [], anyHit: false, any: false,
-  touch: {}, touchMode: false,
+  touch: {}, touchHits: {}, touchMode: false,
   update() {
     const pad = getPad();
     const ps = {};
@@ -46,13 +46,15 @@ export const input = {
     }
     const b = { ...this.bindings, ...FIXED };
     let anyPad = false;
+    const th = this.touchHits;
     for (const a of ACTIONS) {
       const codes = b[a] || [];
       const kb = codes.some((c) => this.keys[c]);
       const hit = codes.some((c) => this.hits[c]);
       const p = !!ps[a];
-      this.cur[a] = kb || p;
-      this.press[a] = hit || (p && !this.padPrev[a]);
+      this.cur[a] = kb || p || !!th[a];
+      this.press[a] = hit || (p && !this.padPrev[a]) || !!th[a];
+      if (th[a]) anyPad = true;
       if (p && !this.padPrev[a]) anyPad = true;
       this.padPrev[a] = p;
     }
@@ -60,7 +62,7 @@ export const input = {
     this.press.confirm = this.press.confirm || this.press.jump;
     this.any = this.anyHit || anyPad;
   },
-  endUpdate() { this.hits = {}; this.anyHit = false; },
+  endUpdate() { this.hits = {}; this.anyHit = false; this.touchHits = {}; },
   down(a) { return !this.blocked && !!this.cur[a]; },
   pressed(a) { return !this.blocked && !!this.press[a]; },
   anyPressed() { return !this.blocked && this.any; },

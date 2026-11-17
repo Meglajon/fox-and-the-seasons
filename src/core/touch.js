@@ -9,9 +9,10 @@ import { state } from './state.js';
 // Touchscreen laptops report a fine pointer, so they keep the keyboard-only layout.
 export const isTouchDevice = () => !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
 
+let sawTouch = false; // any real touch on the screen switches Auto mode on
 export function touchOn() {
   const s = state.settings.touch || 'auto';
-  return s === 'on' || (s === 'auto' && isTouchDevice());
+  return s === 'on' || (s === 'auto' && (isTouchDevice() || sawTouch));
 }
 export const isPortrait = () => innerHeight > innerWidth;
 // Portrait: the game sits near the top (below any notch); everything under it is the control panel.
@@ -42,17 +43,33 @@ function recompute() {
 // Keep receiving a finger's events even if it slides off the button (ignored if the browser refuses).
 function capture(el, id) { try { el.setPointerCapture(id); } catch { /* not supported */ } }
 
+// A press is "latched" until the game has seen it, so even a very quick tap (or a browser that
+// reports the finger lifting straight away) always counts as one press.
+function latch(acts) { for (const a of acts) input.touchHits[a] = true; }
+
+// Which control each finger is on, so lifting the finger anywhere on screen releases it.
+const owner = {};
+const releasers = {};
+function releasePointer(e) {
+  const id = owner[e.pointerId];
+  if (!id) return;
+  delete owner[e.pointerId];
+  releasers[id]?.();
+}
+
 function makeButton(b) {
   const el = document.createElement('div');
   el.className = 'tc btn';
   el.id = b.id;
   el.innerHTML = `<span class="lbl">${b.label}</span>${b.sub ? `<span class="sub">${b.sub}</span>` : ''}`;
-  const down = (e) => { e.preventDefault(); capture(el, e.pointerId); held[b.id] = b.acts; el.classList.add('on'); recompute(); };
-  const up = (e) => { e.preventDefault(); delete held[b.id]; el.classList.remove('on'); recompute(); };
-  el.addEventListener('pointerdown', down);
-  el.addEventListener('pointerup', up);
-  el.addEventListener('pointercancel', up);
-  el.addEventListener('lostpointercapture', up);
+  releasers[b.id] = () => { delete held[b.id]; el.classList.remove('on'); recompute(); };
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    capture(el, e.pointerId);
+    owner[e.pointerId] = b.id;
+    held[b.id] = b.acts; latch(b.acts);
+    el.classList.add('on'); recompute();
+  });
   return el;
 }
 
@@ -75,23 +92,21 @@ function makePad() {
     // Up/down need a deliberate push so running never triggers them by accident.
     if (dy < -R * 0.38 && Math.abs(dy) > Math.abs(dx) * 0.6) acts.push('up');
     if (dy > R * 0.38 && Math.abs(dy) > Math.abs(dx) * 0.6) acts.push('down');
+    latch(acts.filter((a) => !(held.dpad || []).includes(a)));
     held.dpad = acts;
     pad.querySelectorAll('.arr').forEach((a) => a.classList.remove('on'));
     for (const a of acts) pad.querySelector('.' + a[0])?.classList.add('on');
     recompute();
   };
-  const end = (e) => {
-    if (e.pointerId !== pid) return;
+  releasers.dpad = () => {
     pid = null; delete held.dpad;
     knob.style.transform = 'translate(-50%, -50%)';
     pad.querySelectorAll('.arr').forEach((a) => a.classList.remove('on'));
     recompute();
   };
-  pad.addEventListener('pointerdown', (e) => { e.preventDefault(); pid = e.pointerId; capture(pad, pid); move(e); });
-  pad.addEventListener('pointermove', (e) => { if (e.pointerId === pid) { e.preventDefault(); move(e); } });
-  pad.addEventListener('pointerup', end);
-  pad.addEventListener('pointercancel', end);
-  pad.addEventListener('lostpointercapture', end);
+  pad.addEventListener('pointerdown', (e) => { e.preventDefault(); pid = e.pointerId; owner[pid] = 'dpad'; capture(pad, pid); move(e); });
+  // Track the finger anywhere on screen once it started on the pad.
+  document.addEventListener('pointermove', (e) => { if (e.pointerId === pid) { e.preventDefault(); move(e); } }, { passive: false });
   return pad;
 }
 
@@ -142,6 +157,13 @@ export function initTouch() {
   // Stop the page from scrolling, zooming or showing the long-press menu while playing.
   document.addEventListener('touchmove', (e) => { if (input.touchMode) e.preventDefault(); }, { passive: false });
   document.addEventListener('contextmenu', (e) => { if (input.touchMode) e.preventDefault(); });
+  document.addEventListener('pointerup', releasePointer);
+  document.addEventListener('pointercancel', releasePointer);
+  document.addEventListener('touchstart', () => {
+    if (!sawTouch) { sawTouch = true; if (!input.touchMode) applyTouch(); }
+  }, { passive: true });
+  // Tapping the game picture itself = "continue" (dialogue, cards, menus, map).
+  engine.canvas.addEventListener('pointerdown', () => latch(['confirm']));
   engine.viewport = () => {
     if (!input.touchMode) return null;
     if (isPortrait()) return portraitGame();
