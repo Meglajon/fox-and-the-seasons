@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fox &amp; the Seasons</title>
+<meta name="description" content="A cozy hand-drawn platformer: help a young fox wake up the seasons of Foxhollows.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #241c1a; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; outline: none; }
+  #boot { position: fixed; color: #f3e6cc; font: 22px "Patrick Hand", cursive; }
+</style>
+</head>
+<body>
+<div id="boot">Loading Foxhollows…</div>
+<canvas id="game" tabindex="0" aria-label="Fox and the Seasons"></canvas>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "fox-and-the-seasons",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A cozy hand-drawn platformer that runs in the browser. Art and music are made in code.",
+  "type": "module",
+  "scripts": {
+    "start": "python tools/serve.py 8080"
+  }
+}
