@@ -191,7 +191,12 @@ function makePlay(sp) {
 let cur = null, want = null;
 audio.ready.push(() => { if (want) { const w = want; want = null; playMusic(w.id, w.layers); } });
 
-export function playMusic(id, layers = {}) {
+// The trailer locks the music so scene changes can't swap tracks or change tempo mid-shot.
+let locked = false;
+export function lockMusic(on) { locked = on; }
+
+export function playMusic(id, layers = {}, force) {
+  if (locked && !force && (!cur || cur.id !== id)) return;
   if (!audio.ctx) { want = { id, layers }; return; }
   if (cur && cur.id === id) { for (const k in layers) setLayer(k, layers[k]); return; }
   stopMusic(0.6);
@@ -211,7 +216,8 @@ export function playMusic(id, layers = {}) {
   sp._play = sp._play || makePlay(sp);
   cur = { id, sp, L, outs: [outDuck, outDry], step: 0, next: now + 0.12, tempo: 1 };
 }
-export function stopMusic(fade = 0.6) {
+export function stopMusic(fade = 0.6, force) {
+  if (locked && !force) return;
   if (!cur || !audio.ctx) { cur = null; return; }
   const t = audio.ctx.currentTime;
   for (const o of cur.outs) {
@@ -225,7 +231,7 @@ export function setLayer(name, v, time = 0.6) {
   if (!cur || !cur.L[name] || !audio.ctx) return;
   cur.L[name].gain.setTargetAtTime(v, audio.ctx.currentTime, time / 3);
 }
-export function setTempo(m) { if (cur) cur.tempo = m; }
+export function setTempo(m) { if (cur && !locked) cur.tempo = m; }
 export const currentTrack = () => (cur ? cur.id : want ? want.id : null);
 
 function tick() {

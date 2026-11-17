@@ -10,6 +10,7 @@ import { playMusic } from '../audio/music.js';
 import { sfx } from '../audio/sfx.js';
 import { ListMenu, NameEntry } from '../ui/ui.js';
 import { SettingsCabinet } from '../ui/screens.js';
+import { openTrailer, showTrailerButton } from '../ui/trailerplayer.js';
 import { MapScene } from './map.js';
 import { DenScene } from './den.js';
 
@@ -19,7 +20,11 @@ const GROUND = ['#8fc47a', '#86c463', '#c9a25a', '#eef2f6'];
 
 export class TitleScene {
   constructor(skipPress) { this.t = 0; this.ready = !!skipPress; this.menu = null; }
-  enter() { if (this.ready) { playMusic('title'); this.openMenu(); } }
+  enter() {
+    if (!this.noTrailerButton) showTrailerButton(true);
+    if (this.ready) { playMusic('title'); this.openMenu(); }
+  }
+  exit() { showTrailerButton(false); }
   update(dt) {
     this.t += dt;
     if (!this.ready && (input.anyPressed() || input.pressed('confirm'))) {
@@ -37,6 +42,7 @@ export class TitleScene {
       value: () => { const inf = slotInfo(i); return inf ? `${inf.stones}/4 stones · ${inf.seeds} seeds` : ''; },
       select: () => this.pick(i),
     }));
+    items.push({ label: 'Watch the trailer', select: () => openTrailer() });
     items.push({ label: 'Settings cabinet', select: () => pushOverlay(new SettingsCabinet()) });
     this.menu = new ListMenu({ title: 'Choose a save slot', items, y: 250, w: 520, x: W / 2 - 260, dimBg: false, onBack: () => {} });
     this.menu.sel = Math.min(state.settings.lastSlot || 0, 2);
@@ -56,7 +62,8 @@ export class TitleScene {
     }
   }
   render(ctx) {
-    const cyc = (this.t / 4) % 4, i = Math.floor(cyc), k = Math.min(1, (cyc - i) * 1.6), j = (i + 1) % 4;
+    // lockSeason (0-3) holds the tree on one season, e.g. for the trailer's end card.
+    const cyc = this.lockSeason ?? (this.t / 4) % 4, i = Math.floor(cyc), k = Math.min(1, (cyc - i) * 1.6), j = (i + 1) % 4;
     const col = (arr) => mix(arr[i], arr[j], k);
     const b = engine.boil, rng = rngFor(201, b);
     const g = ctx.createLinearGradient(0, 0, 0, H);

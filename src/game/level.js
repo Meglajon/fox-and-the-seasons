@@ -260,7 +260,7 @@ export class LevelScene {
   // ---------- damage, lives ----------
   hurt(srcX) {
     const p = this.player;
-    if (p.inv > 0 || p.dead || this.state !== 'play') return;
+    if (this.godMode || p.inv > 0 || p.dead || this.state !== 'play') return;
     if (p.carry) this.dropCarry();
     p.climb = null;
     const dir = srcX != null ? Math.sign(p.cx - srcX) || -p.facing : -p.facing;
@@ -580,6 +580,7 @@ export class LevelScene {
 
     for (const q of this.parts) this.drawPart(ctx, q);
     for (const f of this.floaters) text(ctx, f.txt, f.x - this.camX, f.y - this.camY, { size: 24, align: 'center', color: f.color || '#3b2a26', outline: '#fffaf0', alpha: Math.min(1, (1.2 - f.t) * 3) });
+    if (this.noHUD) return; // trailer shots: clean picture
     for (const s of this.signs) s.drawBubble(ctx, this);
     this.drawHUD(ctx);
   }

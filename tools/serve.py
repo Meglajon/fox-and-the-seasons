@@ -22,6 +22,20 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         url = urlparse(self.path)
+        if SHOTS is not None and url.path == "/__save":
+            # Raw file upload (e.g. a recorded trailer): /__save?name=trailer.mp4
+            raw = parse_qs(url.query).get("name", ["upload.bin"])[0]
+            name = re.sub(r"[^a-zA-Z0-9_.-]", "", raw).lstrip(".") or "upload.bin"
+            if not re.search(r"\.(mp4|webm|png|jpg|wav)$", name):
+                self.send_error(400, "unsupported file type")
+                return
+            data = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            os.makedirs(SHOTS, exist_ok=True)
+            with open(os.path.join(SHOTS, name), "wb") as f:
+                f.write(data)
+            self.send_response(204)
+            self.end_headers()
+            return
         if SHOTS is None or url.path != "/__shot":
             self.send_error(404)
             return

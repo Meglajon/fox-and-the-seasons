@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fox &amp; the Seasons · trailer director</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #241c1a; overflow: hidden; font-family: "Patrick Hand", cursive; }
+  canvas { display: block; }
+  #bar { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 10px; z-index: 3; }
+  #bar button { font: 20px "Patrick Hand", cursive; padding: 6px 16px; border-radius: 10px; border: 3px solid #3b2a26; background: #fbf3e2; cursor: pointer; }
+  #status { color: #f3e6cc; font-size: 18px; align-self: center; }
+</style>
+</head>
+<body>
+<!-- Director mode: plays the scripted 20-second trailer using the real game, and can record it to a video file. -->
+<canvas id="game"></canvas>
+<div id="bar">
+  <button id="play">▶ Preview</button>
+  <button id="rec">● Record &amp; download</button>
+  <span id="status"></span>
+</div>
+<script type="module" src="src/trailer.js"></script>
+</body>
+</html>

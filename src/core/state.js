@@ -53,6 +53,7 @@ export function loadSlot(i) {
   return state.data;
 }
 export function saveGame() {
+  if (state.noSave) return; // trailer / demo runs never touch real saves
   if (state.data) write(KEY + '.slot' + state.slot, state.data);
   state.settings.lastSlot = state.slot;
   write(KEY + '.settings', state.settings);

@@ -10,6 +10,18 @@ Everything is made in code, with no image or audio files:
 - **Music**: an original lo-fi soundtrack composed as note data and played by a small
   synthesizer, with tape wobble, vinyl crackle and layers that react to the season you choose.
 
+## Trailer
+
+[![Watch the trailer](media/trailer-poster.jpg)](https://meglajon.github.io/fox-and-the-seasons/media/trailer.mp4)
+
+**[▶ Watch the 20-second trailer](https://meglajon.github.io/fox-and-the-seasons/media/trailer.mp4)**. It's
+real gameplay, recorded straight from the game with its own soundtrack. You can also watch it from the
+title screen.
+
+To re-record it after changing the game, open `trailer.html` with the local server and press
+**Record & download**, then run `python tools/fix_mp4_duration.py` on the file so players show its
+full length.
+
 ## Play
 
 Open the GitHub Pages link for this repo (see "Publish" below), or run it locally:

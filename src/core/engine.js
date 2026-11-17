@@ -30,8 +30,8 @@ export function resize() {
   c.style.top = Math.round(v.y + (v.h - ch) / 2) + 'px';
   c.style.width = cw + 'px';
   c.style.height = ch + 'px';
-  c.width = Math.max(1, Math.round(W * s * dpr));
-  c.height = Math.max(1, Math.round(H * s * dpr));
+  c.width = engine.fixed ? engine.fixed.w : Math.max(1, Math.round(W * s * dpr));
+  c.height = engine.fixed ? engine.fixed.h : Math.max(1, Math.round(H * s * dpr));
   const nk = c.width / W;
   if (Math.abs(nk - engine.k) > 0.001) {
     engine.k = nk;

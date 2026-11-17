@@ -14,6 +14,7 @@ export function initAudio() {
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 3; comp.attack.value = 0.005; comp.release.value = 0.2;
   comp.connect(ctx.destination);
+  audio.out = comp; // final mix (also tapped when recording the trailer)
   audio.master = ctx.createGain(); audio.master.gain.value = 0.9; audio.master.connect(comp);
 
   // Music bus: soft saturation -> low-pass (the "dusty" lo-fi sound)
