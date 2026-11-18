@@ -20,6 +20,29 @@ const BASE = {
   },
 };
 BASE.boss = { ...BASE.bloom, sky1: '#f6c58f', sky2: '#fde9cf', far: '#c9cf8a' };
+// Millpond Reach: icy blues and lavender greys, snow-capped ground.
+BASE.pond = {
+  sky1: '#bccfe2', sky2: '#f2f5fa', far: '#b6c4d6', near: '#9fb3c8', grass: '#eef3f9', grassDark: '#b4c3d6',
+  dirt: '#8f8a9c', dirtDark: '#6c6779', stone: '#c5cad4', stoneDark: '#8d94a3', wood: '#a88b6c', woodDark: '#6f5a45',
+  bramble: '#6d5a7a', flower1: '#cfe3f5', flower2: '#f3eedb', house: '#e8e4de', house2: '#cfc9c0', roof: '#7b8db0',
+  leaf: '#7d9a8c', trunk: '#6e5a4a', sun: '#f6f8ff', cloud: '#ffffff', blossom: '#e8f1fb',
+};
+BASE.pondboss = { ...BASE.pond, sky1: '#9fb7d3', sky2: '#e6edf6' };
+// Copperleaf Orchard: rust, mustard and plum, dry golden grass.
+BASE.orchard = {
+  sky1: '#f2c08a', sky2: '#fdeed6', far: '#d8a66a', near: '#c2894e', grass: '#c9a24e', grassDark: '#9a7733',
+  dirt: '#a26a44', dirtDark: '#76492c', stone: '#cdbda4', stoneDark: '#97866c', wood: '#b07a48', woodDark: '#7a5230',
+  bramble: '#7a4a3c', flower1: '#e0783a', flower2: '#f2c14e', house: '#f0d8b0', house2: '#e0b884', roof: '#a8452f',
+  leaf: '#d9662b', trunk: '#6e4a30', sun: '#fff0c8', cloud: '#fff6e6', blossom: '#e88a3a',
+};
+BASE.orchardboss = { ...BASE.orchard, sky1: '#e9a46b', sky2: '#fbe3c4', far: '#c98c56' };
+// Water, ice and leaf colours shared by every district.
+for (const k in BASE) {
+  Object.assign(BASE[k], {
+    water: BASE[k].water || '#7fb6cf', waterDark: '#4f86a6', ice: '#dcf0fb', iceDark: '#8fc0e0',
+    pile: '#d9662b', pile2: '#f2a541', ...(BASE[k].extra || {}),
+  });
+}
 
 const cache = {};
 export function makePal(theme, fadeAmt = 0) {

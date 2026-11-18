@@ -55,6 +55,11 @@ export function sfx(name) {
       [60, 64, 67].forEach((m) => inst.ep(d, t + 0.45, m, 1, 0.6));
       break;
     case 'door': blip(t, 140, 90, 0.2, 'triangle', 0.1); break;
+    case 'freeze': drums.noiseSweep(d, t, 0.3, 6000, 2500, 0.5); inst.musicbox(d, t + 0.05, 96, 0.2, 0.5); break;
+    case 'rustle': drums.noiseSweep(d, t, 0.35, 900, 2600, 0.6); break;
+    case 'crack': drums.rim(d, t, 0.9); drums.rim(d, t + 0.05, 0.6); blip(t, 900, 300, 0.12, 'square', 0.03); break;
+    case 'splash': drums.noiseSweep(d, t, 0.4, 2500, 500, 1); blip(t, 300, 120, 0.2, 'sine', 0.1); break;
+    case 'crow': blip(t, 700, 500, 0.12, 'sawtooth', 0.05); blip(t + 0.16, 650, 450, 0.14, 'sawtooth', 0.05); break;
     default: break;
   }
 }

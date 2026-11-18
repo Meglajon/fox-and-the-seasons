@@ -1,42 +1,50 @@
-// A playable level: tiles, physics, the season bubble, lives, checkpoints, the bell, the boss and the HUD.
+// A playable level: tiles, physics, the season bubble (and what each season does to the world),
+// lives, checkpoints, the bell, bosses and the HUD.
 import { engine, W, H, setScene, transition, pushOverlay, toast, shake } from '../core/engine.js';
 import { input } from '../core/input.js';
-import { state, saveGame, countSeeds } from '../core/state.js';
-import { clamp, hash2, overlap } from '../core/util.js';
+import { state, saveGame } from '../core/state.js';
+import { clamp, hash2, overlap, dist } from '../core/util.js';
 import { T, drawTile } from '../art/tiles.js';
 import { makePal, SEASON_COLOR } from '../art/palettes.js';
 import { drawBackground } from '../art/backgrounds.js';
 import { drawFox } from '../art/fox.js';
 import { panel, text, shape, ellipse, rngFor, line, dot, keycap } from '../art/ink.js';
 import { drawPaw, drawAcorn, drawSeed, drawSeasonIcon, drawZ, drawStoneGem } from '../art/critters.js';
+import { drawLeafGlider } from '../art/critters2.js';
 import { sfx } from '../audio/sfx.js';
-import { playMusic, setLayer, setTempo, stopMusic } from '../audio/music.js';
+import { playMusic, setLayer, setTempo, stopMusic, SEASON_LAYERS } from '../audio/music.js';
 import { getLevel, LEVEL_INFO, LEVEL_ORDER } from './levels.js';
 import { Player } from './player.js';
 import {
   Critter, Acorn, PopAcorn, Berry, GoldenSeed, StonePickup, LetterPickup, Lantern, Bell, Mushroom, Soil, Sign, NPC, Pumpkin,
 } from './entities.js';
+import { Vent, Pike, Scarecrow } from './bosses.js';
+import { DISTRICTS, npcLines } from './story.js';
 import { addAcorns, addLife, checkSeedRewards, unlockOutfit, grantFurniture } from './progress.js';
 import { Dialogue, Choice, LetterCard, Card, ListMenu, fmt } from '../ui/ui.js';
 import { SettingsCabinet } from '../ui/screens.js';
 import { MapScene } from '../scenes/map.js';
 import { DenScene } from '../scenes/den.js';
 
-const SOLID = new Set(['#', 'r', '?', 'L', 'u']);
-const DRAWN = new Set(['#', 'r', '=', '?', 'L', 'u', 'b']);
+const SOLID = new Set(['#', 'r', '?', 'L', 'u', 'i']);
+// Tiles that stay in the grid (everything else is turned into an object when the level loads).
+const TILES = new Set(['#', 'r', '=', '?', 'L', 'u', 'b', '~', 'R', 'w', 'i', 'p']);
+const CRITTERS = { g: 'grub', d: 'snap', z: 'buzz', Z: 'buzz', e: 'beetle', h: 'frog', q: 'squirrel', m: 'moth' };
+const NPCS = { J: 'juniper', O: 'puddle', Y: 'rook' };
+// Which season makes which tile "active" (ice for water, a solid heap for leaf piles).
+const SEASON_TILE = { '~': 'winter', w: 'winter', p: 'autumn' };
+const TRACK_FOR_STONE = { '1-1': 'bloom', '2-1': 'pond', '3-1': 'orchard' };
 
-export const SPRING_LETTER =
-  'Dear Marigold,\n' +
-  'The spring I first wound the Season Clock, you planted sweet peas all along the square. By June they had climbed right up the clock tower, and you laughed and said the old clock was wearing a scarf.\n' +
-  'I wished that spring could last forever. Perhaps that is a silly thing for a clockkeeper to wish.';
+export const SPRING_LETTER = DISTRICTS[1].letter;
 
 export class LevelScene {
   constructor(id) {
     this.id = id;
     this.info = LEVEL_INFO[id];
     this.data = getLevel(id);
+    this.district = DISTRICTS[this.info.district];
     this.cpIndex = -1; this.deathsAtCp = 0; this.lastDeathCp = -2;
-    this.introDone = false; this.talks = 0;
+    this.introDone = false; this.talks = {};
   }
 
   enter() {
@@ -48,12 +56,8 @@ export class LevelScene {
     engine.irisX = this.player.cx - this.camX; engine.irisY = this.player.cy - this.camY;
     if (this.data.boss && !this.introDone) {
       this.introDone = true;
-      pushOverlay(new Dialogue([
-        { who: 'juniper', text: "That pumpkin has grown HUGE! It's sitting right on top of Bloomwood's heart." },
-        { who: 'juniper', text: "Its stalk is the weak spot, but it's far too high to jump to. Use Spring on the soil and bounce up there!" },
-        { who: 'pumpkin', text: 'GRRRUMBLE!' },
-      ], () => this.boss.start()));
-    } else if (this.boss) this.boss.start();
+      pushOverlay(new Dialogue(this.district.bossIntro, () => this.boss.start(this)));
+    } else if (this.boss) this.boss.start(this);
   }
   exit() { setTempo(1); }
 
@@ -62,48 +66,44 @@ export class LevelScene {
     this.w = d.w; this.h = d.h;
     this.tiles = d.rows.map((r) => r.split(''));
     this.ents = []; this.critters = []; this.lanterns = []; this.signs = []; this.parts = []; this.floaters = [];
-    this.bumps = new Map(); this.boss = null; this.time = 0; this.state = 'play'; this.clearT = 0; this.respawning = false;
+    this.bumps = new Map(); this.act = new Map(); this.cracks = new Map();
+    this.boss = null; this.bell = null; this.time = 0; this.state = 'play'; this.clearT = 0; this.respawning = false;
     const had = state.data.seeds[this.id] || [];
-    const soils = [];
+    const deferred = [];
     let seedIdx = 0, lanternIdx = 0, start = [2, this.h - 3];
     for (let x = 0; x < this.w; x++) {
       for (let y = 0; y < this.h; y++) {
         const c = this.tiles[y][x];
-        if (DRAWN.has(c)) continue;
+        if (TILES.has(c)) continue;
         this.tiles[y][x] = '.';
+        if (CRITTERS[c]) {
+          const e = new Critter(CRITTERS[c], x, y);
+          if (c === 'Z') e.vertical = true;
+          this.critters.push(e); this.ents.push(e);
+          continue;
+        }
+        if (NPCS[c]) { this.ents.push(new NPC(x, y, NPCS[c])); continue; }
         switch (c) {
           case 'P': start = [x, y]; break;
           case 'o': this.ents.push(new Acorn(x, y)); break;
           case 'G': this.ents.push(new GoldenSeed(x, y, seedIdx, !!had[seedIdx])); seedIdx++; break;
-          case 'g': case 'd': case 'z': case 'Z': {
-            const e = new Critter({ g: 'grub', d: 'snap', z: 'buzz', Z: 'buzz' }[c], x, y);
-            if (c === 'Z') e.vertical = true;
-            this.critters.push(e); this.ents.push(e);
-            break;
-          }
-          case 'f': case 'v': soils.push([x, y, c]); break;
+          case 'f': case 'v': case 'U': deferred.push([x, y, c]); break;
           case '^': this.ents.push(new Mushroom(x, y)); break;
           case 'C': { const l = new Lantern(x, y, lanternIdx++); this.lanterns.push(l); this.ents.push(l); break; }
           case 'E': this.bell = new Bell(x, y); this.ents.push(this.bell); break;
-          case 'K': if (!state.data.stones.spring) this.ents.push(new StonePickup(x, y)); break;
-          case 'J': this.ents.push(new NPC(x, y, 'juniper')); break;
+          case 'K': {
+            const season = d.stone || 'spring';
+            if (!state.data.stones[season]) this.ents.push(new StonePickup(x, y, season));
+            break;
+          }
           case 's': { const s = new Sign(x, y, d.signs[`${x},${y}`] || ''); this.signs.push(s); this.ents.push(s); break; }
           default: break;
         }
       }
     }
-    for (const [x, y, c] of soils) this.ents.unshift(new Soil(x, y, c, this));
-    this.masks = this.tiles.map((row, y) => row.map((c, x) => {
-      if (c !== '#' && c !== 'r') return 0;
-      const s = (xx, yy) => {
-        if (xx < 0 || xx >= this.w) return true;
-        if (yy >= this.h) return true;
-        if (yy < 0) return false;
-        const k = this.tiles[yy][xx];
-        return k === '#' || k === 'r';
-      };
-      return (s(x, y - 1) ? 1 : 0) | (s(x + 1, y) ? 2 : 0) | (s(x, y + 1) ? 4 : 0) | (s(x - 1, y) ? 8 : 0);
-    }));
+    // Things that need to know where the walls are (vines measure their height, vents their wind column).
+    for (const [x, y, c] of deferred) this.ents.unshift(c === 'U' ? new Vent(x, y, this) : new Soil(x, y, c, this));
+    this.computeMasks();
 
     let px = start[0] * T + T / 2, py = (start[1] + 1) * T;
     if (this.cpIndex >= 0 && this.lanterns[this.cpIndex]) {
@@ -113,24 +113,93 @@ export class LevelScene {
     }
     if (this.skipTo) { px = this.skipTo; this.skipTo = null; }
     this.player = new Player(px, py);
-    if (state.data.stones.spring && this.info.district >= 1) this.player.setSeason('spring', true);
+    const own = this.district?.season;
+    if (own && state.data.stones[own]) this.player.setSeason(own, true);
+    else if (this.info.district >= 1 && state.data.stones.spring) this.player.setSeason('spring', true);
     this.canSeason = true;
 
     const theme = this.data.theme;
-    const awake = theme === 'square' ? false : !!state.data.cleared['1-B'];
+    const awake = theme === 'square' ? false : !!state.data.cleared[this.district?.boss];
     this.palBase = makePal(theme, theme === 'square' ? 0.5 : awake ? 0.12 : 0.6);
     this.palVivid = makePal(theme, 0);
     this.camX = clamp(px - W / 2, 0, this.w * T - W);
-    this.camY = clamp(py - H * 0.6, 0, Math.max(0, this.h * T - H));
-    if (d.autoscroll) { this.camX = clamp(px - 200, 0, this.w * T - W); }
+    this.camY = clamp(py - H * 0.6, -2 * T, Math.max(0, this.h * T - H));
+    if (d.autoscroll) this.camX = clamp(px - 200, 0, this.w * T - W);
     if (d.boss === 'pumpkin') this.boss = new Pumpkin(this);
+    if (d.boss === 'pike') this.boss = new Pike(this);
+    if (d.boss === 'scarecrow') this.boss = new Scarecrow(this);
+  }
+
+  computeMasks() {
+    const t = this.tiles;
+    const same = (xx, yy, set) => {
+      if (xx < 0 || xx >= this.w) return true;
+      if (yy >= this.h) return true;
+      if (yy < 0) return false;
+      return set.includes(t[yy][xx]);
+    };
+    this.masks = t.map((row, y) => row.map((c, x) => {
+      if (c === '#' || c === 'r') {
+        const s = ['#', 'r'];
+        return (same(x, y - 1, s) ? 1 : 0) | (same(x + 1, y, s) ? 2 : 0) | (same(x, y + 1, s) ? 4 : 0) | (same(x - 1, y, s) ? 8 : 0);
+      }
+      if (c === '~' || c === 'R' || c === 'p') return y > 0 && t[y - 1][x] === c ? 1 : 0;
+      return 0;
+    }));
+  }
+
+  // ---------- seasons acting on the world ----------
+  isActive(tx, ty) { return this.act.has(ty * this.w + tx); }
+  winterAt(x, y) { const p = this.player; return p && p.season === 'winter' && !p.dead && dist(p.cx, p.cy, x, y) < p.bubble + 4; }
+  updateSeasonTiles(dt) {
+    for (const [k, v] of this.act) { if (v - dt <= 0) this.act.delete(k); else this.act.set(k, v - dt); }
+    const p = this.player;
+    if (!p.season || p.dead || p.bubble < 20) return;
+    const R = p.bubble;
+    const tx0 = Math.max(0, Math.floor((p.cx - R) / T)), tx1 = Math.min(this.w - 1, Math.floor((p.cx + R) / T));
+    const ty0 = Math.max(0, Math.floor((p.cy - R) / T)), ty1 = Math.min(this.h - 1, Math.floor((p.cy + R) / T));
+    let fresh = 0;
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const c = this.tiles[ty][tx];
+        if (SEASON_TILE[c] !== p.season) continue;
+        if (dist(p.cx, p.cy, tx * T + T / 2, ty * T + T / 2) > R + T * 0.35) continue;
+        const k = ty * this.w + tx;
+        if (!this.act.has(k)) fresh++;
+        this.act.set(k, 2.5);
+      }
+    }
+    if (fresh > 0 && Math.random() < 0.25) sfx(p.season === 'winter' ? 'freeze' : 'rustle');
+  }
+  // Ice floes crack and sink a moment after you land on them, unless Winter keeps them frozen.
+  updateCracks(dt) {
+    const p = this.player;
+    if (p.onGround && p.gtile) {
+      const [gx, gy] = p.gtile;
+      if (this.tiles[gy]?.[gx] === 'i' && p.season !== 'winter' && !this.cracks.has(gy * this.w + gx)) {
+        this.cracks.set(gy * this.w + gx, 0); sfx('crack');
+      }
+    }
+    for (const [k, t] of this.cracks) {
+      if (p.season === 'winter') { this.cracks.delete(k); continue; }
+      const nt = t + dt;
+      if (nt >= 0.6) {
+        const tx = k % this.w, ty = Math.floor(k / this.w);
+        this.tiles[ty][tx] = '.';
+        this.cracks.delete(k);
+        this.burst(tx * T + T / 2, ty * T + 10, 'snow', 8); sfx('splash');
+      } else this.cracks.set(k, nt);
+    }
   }
 
   // ---------- physics helpers ----------
   solid(tx, ty) {
     if (tx < 0 || tx >= this.w) return true;
     if (ty < 0 || ty >= this.h) return false;
-    return SOLID.has(this.tiles[ty][tx]);
+    const c = this.tiles[ty][tx];
+    if (SOLID.has(c)) return true;
+    if (c === '~' || c === 'w' || c === 'p') return this.act.has(ty * this.w + tx);
+    return false;
   }
   oneway(tx, ty) {
     if (tx < 0 || tx >= this.w || ty < 0 || ty >= this.h) return false;
@@ -138,6 +207,25 @@ export class LevelScene {
   }
   solidPx(x, y) { return this.solid(Math.floor(x / T), Math.floor(y / T)); }
   onewayPx(x, y) { return this.oneway(Math.floor(x / T), Math.floor(y / T)); }
+  tileAtPx(x, y) { return this.tiles[Math.floor(y / T)]?.[Math.floor(x / T)]; }
+  onIce(b) {
+    const tx = Math.floor((b.x + b.w / 2) / T), ty = Math.floor((b.y + b.h + 2) / T);
+    const c = this.tiles[ty]?.[tx];
+    return c === 'i' || ((c === '~' || c === 'w') && this.isActive(tx, ty));
+  }
+  inWaterfall(b) {
+    const tx = Math.floor((b.x + b.w / 2) / T), ty = Math.floor((b.y + b.h / 2) / T);
+    return this.tiles[ty]?.[tx] === 'w' && !this.isActive(tx, ty);
+  }
+  inWater(b, inset = 12) {
+    const x0 = Math.floor((b.x + 6) / T), x1 = Math.floor((b.x + b.w - 6) / T);
+    const ty = Math.floor((b.y + b.h - inset) / T);
+    for (let tx = x0; tx <= x1; tx++) {
+      const c = this.tiles[ty]?.[tx];
+      if (c === 'R' || (c === '~' && !this.isActive(tx, ty))) return true;
+    }
+    return false;
+  }
   touchWall(b, dir) {
     const x = dir > 0 ? b.x + b.w + 1.5 : b.x - 1.5;
     const tx = Math.floor(x / T);
@@ -157,12 +245,21 @@ export class LevelScene {
     b.x = nx;
     let ny = b.y + b.vy * dt;
     const wasBottom = b.y + b.h;
-    b.onGround = false;
+    b.onGround = false; b.gtile = null;
     const tx0 = Math.floor((b.x + 1) / T), tx1 = Math.floor((b.x + b.w - 1) / T);
     if (b.vy >= 0) {
       const ty = Math.floor((ny + b.h) / T);
       for (let tx = tx0; tx <= tx1; tx++) {
-        if (this.solid(tx, ty) || (this.oneway(tx, ty) && wasBottom <= ty * T + 1)) { ny = ty * T - b.h; b.vy = 0; b.onGround = true; break; }
+        if (this.solid(tx, ty) || (this.oneway(tx, ty) && wasBottom <= ty * T + 1)) { ny = ty * T - b.h; b.vy = 0; b.onGround = true; b.gtile = [tx, ty]; break; }
+      }
+      // Frozen critters are ice blocks you can stand on.
+      if (!b.onGround && b === this.player) {
+        for (const e of this.critters) {
+          if (!e.frozen || e.mode !== 'rest' || e.dead) continue;
+          if (b.x + b.w > e.x + 3 && b.x < e.x + e.w - 3 && wasBottom <= e.y + 2 && ny + b.h >= e.y) {
+            ny = e.y - b.h; b.vy = 0; b.onGround = true; break;
+          }
+        }
       }
     } else {
       const ty = Math.floor(ny / T);
@@ -214,26 +311,13 @@ export class LevelScene {
     saveGame();
     this.burst(x, y, 'spark', 20); sfx('unlock');
     this.player.frozen = true;
-    pushOverlay(new Dialogue([
-      { who: 'stone', text: 'You found the Spring stone!' },
-      { who: 'juniper', text: "It's glowing! Press {next} or {prev} to wake up Spring around you. Any soil nearby will sprout." },
-      { who: 'juniper', text: 'Be careful: if something hits you, the stone will fizzle out for a few seconds.' },
-    ], () => { this.player.frozen = false; this.player.setSeason('spring'); }));
+    const lines = (Object.values(DISTRICTS).find((dd) => dd.season === season) || DISTRICTS[1]).stoneLines;
+    pushOverlay(new Dialogue(lines, () => { this.player.frozen = false; this.player.setSeason(season); }));
   }
   talk(who) {
-    if (who !== 'juniper') return;
-    this.talks++;
-    const lines = state.data.stones.spring
-      ? [{ who: 'juniper', text: 'Spring suits you! There are three golden seeds hidden in every level. Can you find them all?' }]
-      : this.talks === 1
-        ? [
-          { who: 'juniper', text: "Oh! A fox! You must be Thimble's apprentice, {name}." },
-          { who: 'juniper', text: 'Bloomwood has been stuck in spring for months. Everything grows and grows, but nothing ever properly blooms.' },
-          { who: 'juniper', text: 'I saw something glowing pink up ahead, past the snapdragons. Maybe it is what you are looking for?' },
-        ]
-        : [{ who: 'juniper', text: 'The glowing thing was just past the snapdragons. Mind their seeds!' }];
+    this.talks[who] = (this.talks[who] || 0) + 1;
     this.player.vx = 0;
-    pushOverlay(new Dialogue(lines));
+    pushOverlay(new Dialogue(npcLines(who, state.data, this.talks[who])));
   }
   setCheckpoint(l) { if (l.idx > this.cpIndex) { this.cpIndex = l.idx; this.deathsAtCp = 0; } }
 
@@ -274,11 +358,15 @@ export class LevelScene {
   loseLife(fell) {
     const p = this.player;
     if (p.dead) return;
+    if (this.godMode && !fell) return;
     if (p.carry) this.dropCarry();
     p.dead = true; p.deadT = 0; p.climb = null; p.vx = 0; p.vy = fell ? -300 : -650;
     if (!state.settings.infiniteLives) state.data.lives = Math.max(0, state.data.lives - 1);
     sfx('lose'); shake(6);
     saveGame();
+  }
+  splash(b) {
+    this.burst(b.x + b.w / 2, b.y + b.h - 6, 'splash', 14); sfx('splash');
   }
   afterDeath() {
     if (this.respawning) return;
@@ -288,7 +376,7 @@ export class LevelScene {
     this.lastDeathCp = this.cpIndex;
     transition(() => {
       this.load();
-      if (this.boss) this.boss.start();
+      if (this.boss) this.boss.start(this);
       engine.irisX = this.player.cx - this.camX; engine.irisY = this.player.cy - this.camY;
       if (state.settings.skipOffer && this.deathsAtCp >= 3 && this.canSkip()) this.offerSkip();
     }, W / 2, H / 2);
@@ -340,7 +428,8 @@ export class LevelScene {
     const d = state.data;
     d.cleared[this.id] = true;
     if (this.id === '0-2' && unlockOutfit('hat', 'acorn')) toast('New hat for the wardrobe: Acorn cap!');
-    if (this.id === '1-1' && !d.tracks.includes('bloom')) d.tracks.push('bloom');
+    const tr = TRACK_FOR_STONE[this.id];
+    if (tr && !d.tracks.includes(tr)) d.tracks.push(tr);
     d.mapNode = LEVEL_ORDER.indexOf(this.id) + 1;
     saveGame();
     transition(() => setScene(new MapScene()));
@@ -353,39 +442,37 @@ export class LevelScene {
   gotLetter() {
     this.player.frozen = true;
     sfx('unlock');
-    pushOverlay(new LetterCard('A memory letter (1 of 4)', SPRING_LETTER, '— T.', () => this.districtAwake()));
+    const n = this.info.district;
+    pushOverlay(new LetterCard(`A memory letter (${n} of 4)`, this.district.letter, '— T.', () => this.districtAwake()));
   }
   districtAwake() {
-    const d = state.data;
-    d.cleared['1-B'] = true;
-    if (!d.letters.includes('spring')) d.letters.push('spring');
-    unlockOutfit('hat', 'crown');
-    grantFurniture('pumpkin_lamp');
-    for (const t of ['bloom', 'boss']) if (!d.tracks.includes(t)) d.tracks.push(t);
-    d.mapNode = LEVEL_ORDER.indexOf('1-B') + 1;
+    const d = state.data, D = this.district;
+    d.cleared[D.boss] = true;
+    if (!d.letters.includes(D.letterKey)) d.letters.push(D.letterKey);
+    unlockOutfit('hat', D.rewards.hat);
+    grantFurniture(D.rewards.furniture);
+    for (const t of D.rewards.tracks) if (!d.tracks.includes(t)) d.tracks.push(t);
+    d.mapNode = LEVEL_ORDER.indexOf(D.boss) + 1;
     saveGame();
     sfx('clear');
     pushOverlay(new Card({
-      title: 'Bloomwood is awake!',
-      lines: ['New hat: Flower crown', 'New furniture: Pumpkin lamp', 'New record: Grumpy Critters'],
-      h: 270,
+      title: D.awakeTitle, lines: D.rewardLines, h: 270,
       cb: () => transition(() => setScene(new MapScene())),
     }));
   }
 
   openPause() {
     const self = this;
-    const menu = new ListMenu({
+    pushOverlay(new ListMenu({
       title: 'Paused',
       items: [
         { label: 'Keep playing', select: () => engine.overlays.pop() },
         { label: 'Settings cabinet', select: () => pushOverlay(new SettingsCabinet()) },
-        { label: 'Restart from last lantern', select: () => { engine.overlays.pop(); self.load(); if (self.boss) self.boss.start(); } },
+        { label: 'Restart from last lantern', select: () => { engine.overlays.pop(); self.load(); if (self.boss) self.boss.start(self); } },
         { label: 'Back to the map', select: () => { engine.overlays.pop(); transition(() => setScene(new MapScene())); } },
       ],
       note: this.info.name,
-    });
-    pushOverlay(menu);
+    }));
   }
 
   // ---------- update ----------
@@ -395,13 +482,15 @@ export class LevelScene {
     const p = this.player;
     if (input.pressed('pause') && this.state === 'play' && !p.dead) { this.openPause(); return; }
 
+    this.updateSeasonTiles(dt);
     if (!p.dead) p.update(dt, this);
     else { p.deadT += dt; p.vy += 1800 * dt; p.y += p.vy * dt; if (p.deadT > 1.3) this.afterDeath(); }
+    this.updateCracks(dt);
 
     if (p.carry && (!input.down('sprint') || p.climb)) this.throwCarry();
     if (p.hitCeil && p.ceilHits) {
       let best = p.ceilHits[0], bd = 1e9;
-      for (const h of p.ceilHits) { const d = Math.abs(h[0] * T + T / 2 - p.cx); if (d < bd) { bd = d; best = h; } }
+      for (const h of p.ceilHits) { const dd = Math.abs(h[0] * T + T / 2 - p.cx); if (dd < bd) { bd = dd; best = h; } }
       this.bump(best[0], best[1]);
       p.hitCeil = false; p.ceilHits = null;
     }
@@ -409,10 +498,20 @@ export class LevelScene {
     for (const e of this.ents) e.update(dt, this);
     this.boss?.update(dt, this);
 
+    // Water: Fennel splashes in (and loses a life); frogs float; other critters are swept away.
+    for (const e of this.critters) {
+      if (e.dead || e.mode === 'carried' || !this.inWater(e, 8)) continue;
+      if (e.kind === 'frog' && !e.asleep) {
+        const ty = Math.floor((e.y + e.h - 8) / T);
+        e.y = ty * T - e.h + 10; e.vy = Math.min(e.vy, 0); e.onGround = true;
+      } else if (!e.isFlier || e.asleep) { e.dead = true; this.splash(e); }
+    }
+
     if (!p.dead && this.state === 'play') {
       this.critterContacts(dt);
       if (this.touchingThorns(p)) this.hurt();
       for (const e of this.ents) if (e.hurts && !e.dead && overlap(e, p)) { e.dead = true; this.hurt(e.x); }
+      if (this.inWater(p)) { this.splash(p); this.loseLife(true); }
       if (p.y > this.h * T + 40) this.loseLife(true);
     }
     if (this.data.autoscroll && this.state === 'play') this.updateRush(dt);
@@ -420,21 +519,20 @@ export class LevelScene {
     this.ents = this.ents.filter((e) => !e.dead);
     this.critters = this.critters.filter((e) => !e.dead);
 
-    if (this.info.music === 'bloom') {
-      const on = p.season === 'spring' ? 1 : 0;
-      setLayer('lead', on * 0.9); setLayer('birds', on); setLayer('shaker', on * 0.8); setLayer('hum', 1 - on * 0.8);
+    const sl = SEASON_LAYERS[this.info.music];
+    if (sl) {
+      const on = p.season === sl.season;
+      for (const [k, v] of Object.entries(on ? sl.on : sl.off)) setLayer(k, v);
     }
 
     for (const q of this.parts) {
       q.life -= dt; q.x += q.vx * dt; q.y += q.vy * dt;
       if (q.type === 'dust') { q.vx *= 0.9; q.vy *= 0.9; }
-      else if (q.type === 'petal') { q.vy += 60 * dt; q.vx += Math.sin(q.life * 6) * 20 * dt; }
-      else if (q.type === 'spark') q.vy += 200 * dt;
+      else if (q.type === 'petal' || q.type === 'leaf' || q.type === 'snow') { q.vy += (q.ambient ? 10 : 60) * dt; q.vx += Math.sin(q.life * 6) * 20 * dt; }
+      else if (q.type === 'spark' || q.type === 'splash') q.vy += (q.type === 'splash' ? 700 : 200) * dt;
     }
     this.parts = this.parts.filter((q) => q.life > 0);
-    if (this.palVivid.theme !== 'square' && (p.bubble > 40 || this.palBase.vivid) && Math.random() < dt * 3) {
-      this.parts.push({ type: 'petal', x: this.camX + Math.random() * W, y: this.camY - 10, vx: 20, vy: 30, life: 6, max: 6, rot: 0, ambient: true });
-    }
+    this.ambient(dt);
     for (const f of this.floaters) { f.t += dt; f.y -= 40 * dt; }
     this.floaters = this.floaters.filter((f) => f.t < 1.2);
     for (const [k, v] of this.bumps) { if (v - dt <= 0) this.bumps.delete(k); else this.bumps.set(k, v - dt); }
@@ -445,6 +543,17 @@ export class LevelScene {
     }
     this.updateCamera(dt);
     if (this.state === 'clear') { this.clearT += dt; if (this.clearT > 2.2 && !this.clearShown) { this.clearShown = true; this.showClear(); } }
+  }
+
+  // Falling petals, snow or leaves, depending on the district.
+  ambient(dt) {
+    const th = this.palVivid.theme;
+    if (th === 'square') return;
+    const type = th.startsWith('pond') ? 'snow' : th.startsWith('orchard') ? 'leaf' : 'petal';
+    const rate = type === 'snow' ? 6 : type === 'leaf' ? 4 : 3;
+    if ((this.player.bubble > 40 || this.palBase.vivid || type !== 'petal') && Math.random() < dt * rate) {
+      this.parts.push({ type, x: this.camX + Math.random() * W, y: this.camY - 10, vx: type === 'leaf' ? 50 : 15, vy: type === 'snow' ? 40 : 30, life: 7, max: 7, rot: 0, ambient: true });
+    }
   }
 
   bump(tx, ty) {
@@ -465,7 +574,7 @@ export class LevelScene {
       if (e.asleep) {
         if (e.mode === 'thrown' || e.kind === 'snap' || e.kickCool > 0) continue;
         if (input.down('sprint') && !p.carry && !p.climb) { p.carry = e; e.mode = 'carried'; sfx('pickup'); }
-        else { e.mode = 'thrown'; e.vx = (p.cx < e.cx ? 1 : -1) * 430; e.vy = -120; e.bounces = 0; e.kickCool = 0.4; sfx('kick'); }
+        else { e.mode = 'thrown'; e.vx = (p.cx < e.cx ? 1 : -1) * (e.frozen ? 520 : 430); e.vy = -120; e.bounces = 0; e.kickCool = 0.4; sfx('kick'); }
         continue;
       }
       const prevBottom = p.bottom - p.vy * dt;
@@ -486,8 +595,9 @@ export class LevelScene {
   }
   updateRush(dt) {
     const max = this.w * T - W;
-    if (this.camX < max) this.camX = Math.min(max, this.camX + this.data.autoscroll * dt);
     const p = this.player;
+    // The screen scrolls on its own, but speeds up if you run ahead, so you're never pinned at the right edge.
+    if (this.camX < max) this.camX = Math.min(max, Math.max(this.camX + this.data.autoscroll * dt, p.dead ? 0 : p.cx - W * 0.6));
     if (p.dead) return;
     if (p.x + p.w > this.camX + W) { p.x = this.camX + W - p.w; p.vx = Math.min(p.vx, 0); }
     if (this.camX < max && p.x < this.camX + 40) this.hurt(this.camX - 100);
@@ -514,11 +624,14 @@ export class LevelScene {
     const ty0 = Math.max(0, Math.floor((this.camY + y0) / T)), ty1 = Math.min(this.h - 1, Math.floor((this.camY + y1) / T));
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
-        const c = this.tiles[ty][tx];
-        if (!DRAWN.has(c)) continue;
+        let c = this.tiles[ty][tx];
+        if (!TILES.has(c)) continue;
+        let xo = 0, yo = 0;
         const bump = this.bumps.get(tx + ',' + ty);
-        const yo = bump ? -Math.sin((bump / 0.2) * Math.PI) * 9 : 0;
-        drawTile(ctx, c, tx * T - this.camX, ty * T - this.camY + yo, this.masks[ty][tx], Math.floor(hash2(tx, ty) * 3), pal, b);
+        if (bump) yo = -Math.sin((bump / 0.2) * Math.PI) * 9;
+        if (SEASON_TILE[c] && this.isActive(tx, ty)) c = c === '~' ? 'I' : c === 'w' ? 'Y' : 'P';
+        if (c === 'i' && this.cracks.has(ty * this.w + tx)) { c = 'k'; xo = Math.sin(this.time * 60) * 2; }
+        drawTile(ctx, c, tx * T - this.camX + xo, ty * T - this.camY + yo, this.masks[ty][tx], Math.floor(hash2(tx, ty) * 3), pal, b);
       }
     }
   }
@@ -551,10 +664,11 @@ export class LevelScene {
       ctx.setLineDash([12, 9]); ctx.lineDashOffset = -this.time * 30;
       this.bubblePath(ctx, cx, cy, R); ctx.stroke();
       ctx.restore();
+      const ORBIT = { spring: ['#f7c2d2', '#fff1f5'], winter: ['#ffffff', '#cfe8fb'], autumn: ['#e0783a', '#f2c14e'] }[p.season] || ['#fff', '#fff'];
       for (let i = 0; i < 6; i++) {
         const a = this.time * 0.7 + i * 1.047;
-        ctx.fillStyle = i % 2 ? '#f7c2d2' : '#fff1f5';
-        ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * R, cy + Math.sin(a) * R, 5, 3, a, 0, 7); ctx.fill();
+        ctx.fillStyle = ORBIT[i % 2];
+        ctx.beginPath(); ctx.ellipse(cx + Math.cos(a) * R, cy + Math.sin(a) * R, p.season === 'winter' ? 3.5 : 5, p.season === 'winter' ? 3.5 : 3, a, 0, 7); ctx.fill();
       }
       if (state.settings.cbSymbols) for (let i = 0; i < 4; i++) {
         const a = this.time * 0.3 + i * 1.571;
@@ -565,11 +679,12 @@ export class LevelScene {
     for (const e of this.ents) if (e.mode !== 'carried') e.draw(ctx, this);
     this.boss?.draw(ctx, this);
 
-    if (this.data.autoscroll) this.drawBrambleWall(ctx);
+    if (this.data.autoscroll) this.drawChaseWall(ctx);
 
     const pose = p.pose();
     const blink = p.inv > 0 && Math.floor(p.inv * 14) % 2 === 0;
     if (!blink) {
+      if (p.gliding) drawLeafGlider(ctx, p.cx - this.camX, p.y - this.camY - 22, this.time, engine.boil);
       const scarf = p.charm > 0 ? '#b9b0a3' : SEASON_COLOR[p.season || 'none'];
       drawFox(ctx, p.cx - this.camX, p.bottom - this.camY + 1, {
         facing: p.wall ? -p.wall : p.facing, t: p.t, pose, phase: p.phase, squash: p.squash, outfit: state.data.outfit,
@@ -584,15 +699,17 @@ export class LevelScene {
     for (const s of this.signs) s.drawBubble(ctx, this);
     this.drawHUD(ctx);
   }
-  drawBrambleWall(ctx) {
+  // The thing chasing you in auto-scrolling levels: brambles in Bloomwood, a rushing torrent in Millpond.
+  drawChaseWall(ctx) {
     const rng = rngFor(91, engine.boil);
+    const water = this.data.theme.startsWith('pond');
     const pts = [[-20, -10]];
     for (let y = -10; y <= H + 20; y += 30) pts.push([28 + Math.sin(y * 0.05 + this.time * 3) * 10 + rng() * 6, y]);
     pts.push([-20, H + 20]);
-    shape(ctx, pts, { fill: '#5e3b57', rng, lw: 3, wob: 2 });
+    shape(ctx, pts, { fill: water ? '#4f86a6' : '#5e3b57', rng, lw: 3, wob: 2 });
     for (let y = 10; y < H; y += 46) {
-      line(ctx, [[0, y], [40 + Math.sin(y + this.time * 4) * 8, y + 10]], { rng, stroke: '#7b4f73', lw: 4 });
-      dot(ctx, 30, y + 20, 4, '#f4a3bf');
+      line(ctx, [[0, y], [40 + Math.sin(y + this.time * 4) * 8, y + 10]], { rng, stroke: water ? '#dcf0fb' : '#7b4f73', lw: 4 });
+      dot(ctx, 30, y + 20, 4, water ? '#ffffff' : '#f4a3bf');
     }
   }
   drawPart(ctx, q) {
@@ -601,6 +718,10 @@ export class LevelScene {
     if (q.type === 'dust') { ctx.fillStyle = '#e9dcc4'; ctx.beginPath(); ctx.arc(x, y, 4 + (1 - a) * 8, 0, 7); ctx.fill(); }
     else if (q.type === 'spark') { ctx.fillStyle = '#ffd774'; ctx.translate(x, y); ctx.rotate(q.rot + q.life * 8); ctx.fillRect(-3, -3, 6, 6); }
     else if (q.type === 'petal') { ctx.fillStyle = '#f7b6c8'; ctx.translate(x, y); ctx.rotate(q.life * 3); ctx.beginPath(); ctx.ellipse(0, 0, 5, 3, 0, 0, 7); ctx.fill(); }
+    else if (q.type === 'leaf') { ctx.fillStyle = q.life % 2 > 1 ? '#e0783a' : '#f2a541'; ctx.translate(x, y); ctx.rotate(q.life * 2.5); ctx.beginPath(); ctx.ellipse(0, 0, 6, 3, 0, 0, 7); ctx.fill(); }
+    else if (q.type === 'snow') { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill(); }
+    else if (q.type === 'splash') { ctx.fillStyle = '#cfeafa'; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.fill(); }
+    else if (q.type === 'bubble') { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.stroke(); }
     else if (q.type === 'z') drawZ(ctx, x, y, a);
     ctx.restore();
   }
@@ -626,7 +747,7 @@ export class LevelScene {
       const x = W - 60, y = this.info.seeds ? 112 : 50;
       const col = p.charm > 0 ? '#b9b0a3' : SEASON_COLOR[p.season || 'none'];
       shape(ctx, ellipse(x, y, 30, 30, 18), { fill: col, rng: rngFor(54, b), lw: 2.6, wash: false });
-      if (p.season || p.charm > 0) drawStoneGem(ctx, x, y + 2, p.lastSeason || 'spring', { noGlow: true, boil: b, scale: 1.2, empty: p.charm > 0 });
+      if (p.season || p.charm > 0) drawStoneGem(ctx, x, y + 2, p.season || p.lastSeason || 'spring', { noGlow: true, boil: b, scale: 1.2, empty: p.charm > 0 });
       else text(ctx, 'off', x, y + 8, { size: 20, align: 'center' });
       if (p.charm > 0) {
         ctx.strokeStyle = '#3b2a26'; ctx.lineWidth = 4;

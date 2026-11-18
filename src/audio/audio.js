@@ -182,6 +182,19 @@ export const inst = {
     lp.connect(g); send(g, dest, 0.3);
     a.start(t); a.stop(t + dur + 0.8);
   },
+  // Soft nylon-string guitar.
+  nylon(dest, t, m, dur, v = 1) {
+    const f = mtof(m);
+    const a = osc('triangle', f, t), b = osc('sawtooth', f, t);
+    const lp = C().createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1;
+    lp.frequency.setValueAtTime(2600, t); lp.frequency.setTargetAtTime(700, t, 0.15);
+    const gb = C().createGain(); gb.gain.value = 0.25;
+    wob(a, dest); wob(b, dest);
+    a.connect(lp); b.connect(gb); gb.connect(lp);
+    const g = env(t, 0.16 * v, 0.004, 0.35, t + dur + 0.2, 0.15, 0.1);
+    lp.connect(g); send(g, dest, 0.35);
+    const end = t + dur + 1.2; a.start(t); b.start(t); a.stop(end); b.stop(end);
+  },
   bird(dest, t, v = 1) {
     for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) {
       const s = t + i * 0.09, f0 = 2400 + Math.random() * 700;

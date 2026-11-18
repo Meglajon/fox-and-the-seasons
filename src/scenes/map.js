@@ -6,6 +6,7 @@ import { fade, lerp, shade } from '../core/util.js';
 import { shape, line, ellipse, rrect, rngFor, dot, text, panel } from '../art/ink.js';
 import { drawFox } from '../art/fox.js';
 import { drawSeed, drawPaw, drawAcorn, drawPumpkin } from '../art/critters.js';
+import { drawPike, drawScarecrow } from '../art/critters2.js';
 import { SEASON_COLOR } from '../art/palettes.js';
 import { LEVEL_INFO } from '../game/levels.js';
 import { LevelScene } from '../game/level.js';
@@ -20,8 +21,12 @@ export const NODES = [
   { id: 'den', x: 118, y: 446, label: "Fennel's Den" },
   { id: '0-1', x: 238, y: 398 }, { id: '0-2', x: 340, y: 320 },
   { id: '1-1', x: 476, y: 366 }, { id: '1-2', x: 590, y: 304 }, { id: '1-3', x: 704, y: 356 },
-  { id: '1-4', x: 812, y: 282 }, { id: '1-B', x: 842, y: 172 },
-  { id: '2-1', x: 650, y: 120, label: 'Millpond Reach', locked: true },
+  { id: '1-4', x: 812, y: 282 }, { id: '1-B', x: 842, y: 186 },
+  { id: '2-1', x: 900, y: 112 }, { id: '2-2', x: 812, y: 78 }, { id: '2-3', x: 726, y: 118 },
+  { id: '2-4', x: 642, y: 80 }, { id: '2-B', x: 560, y: 116 },
+  { id: '3-1', x: 452, y: 150 }, { id: '3-2', x: 360, y: 118 }, { id: '3-3', x: 268, y: 152 },
+  { id: '3-4', x: 182, y: 112 }, { id: '3-B', x: 96, y: 160 },
+  { id: '4-1', x: 470, y: 262, label: 'Sunglass Greenhouse', locked: true },
 ];
 
 export class MapScene {
@@ -39,7 +44,7 @@ export class MapScene {
     const d = state.data;
     if (i <= 1) return true;
     const n = NODES[i];
-    if (n.locked) return !!d.cleared['1-B'];
+    if (n.locked) return !!d.cleared['3-B'];
     return !!d.cleared[NODES[i - 1].id];
   }
   update(dt) {
@@ -68,7 +73,7 @@ export class MapScene {
     const n = NODES[this.i];
     saveGame();
     if (n.id === 'den') { sfx('door'); transition(() => setScene(new DenScene({ fromDoor: true })), n.x, n.y); }
-    else if (n.locked) { sfx('deny'); toast('Millpond Reach arrives in the next build!'); }
+    else if (n.locked) { sfx('deny'); toast('The Sunglass Greenhouse opens in the next build!'); }
     else { sfx('select'); transition(() => setScene(new LevelScene(n.id)), n.x, n.y); }
   }
   openPause() {
@@ -112,18 +117,27 @@ export class MapScene {
     }
     text(ctx, 'Bloomwood', 880, 470, { size: 24, color: '#5a4636', align: 'center' });
 
-    // Locked districts (faded, with question marks)
+    // Millpond Reach (top right): a pond, the old mill, snowy pines. Colour returns once Old Pike is beaten.
+    const pc = (hex) => fade(hex, d.cleared['2-B'] ? 0.05 : d.stones.winter ? 0.35 : 0.6);
+    shape(ctx, ellipse(760, 104, 130, 34, 24), { fill: pc('#a9d2e6'), rng, lw: 2.2 });
+    shape(ctx, rrect(862, 26, 40, 46, 3), { fill: pc('#cfc9c0'), rng, lw: 2 });
+    shape(ctx, [[856, 28], [882, 6], [908, 28]], { fill: pc('#7b8db0'), rng, lw: 2 });
+    for (const [tx, ty] of [[600, 60], [700, 40], [930, 170]]) shape(ctx, [[tx - 16, ty + 14], [tx, ty - 20], [tx + 16, ty + 14]], { fill: pc('#7d9a8c'), rng, lw: 2, step: 10 });
+    text(ctx, 'Millpond Reach', 760, 166, { size: 20, color: '#5a4636', align: 'center' });
+    // Copperleaf Orchard (top left): rows of autumn trees.
+    const oc = (hex) => fade(hex, d.cleared['3-B'] ? 0.05 : d.stones.autumn ? 0.35 : 0.6);
+    for (const [tx, ty] of [[60, 80], [130, 60], [210, 70], [300, 64], [400, 76], [70, 236], [150, 224]]) {
+      line(ctx, [[tx, ty + 22], [tx, ty + 6]], { rng, stroke: oc('#6e4a30'), lw: 4 });
+      shape(ctx, ellipse(tx, ty - 6, 24, 18, 12), { fill: oc('#e0783a'), rng, lw: 2 });
+    }
+    text(ctx, 'Copperleaf Orchard', 250, 30, { size: 20, color: '#5a4636', align: 'center' });
+    // Still to come: the Sunglass Greenhouse and the Hollow Oak.
     ctx.save(); ctx.globalAlpha = 0.6;
-    shape(ctx, ellipse(650, 90, 80, 26, 20), { fill: fade('#bfe0f0', 0.6), rng, lw: 2 });
-    shape(ctx, rrect(730, 40, 34, 40, 3), { fill: fade('#ddb98f', 0.6), rng, lw: 2 });
-    text(ctx, 'Millpond Reach', 650, 30, { size: 20, color: '#5a4636', align: 'center' });
-    for (const [tx, ty] of [[70, 110], [120, 80], [170, 120]]) shape(ctx, ellipse(tx, ty, 26, 22, 12), { fill: fade('#e0783a', 0.7), rng, lw: 2 });
-    text(ctx, 'Copperleaf ?', 120, 160, { size: 20, color: '#5a4636', align: 'center' });
-    shape(ctx, rrect(860, 50, 70, 46, 6), { fill: fade('#cfeccd', 0.6), rng, lw: 2 });
-    text(ctx, 'Greenhouse ?', 895, 120, { size: 20, color: '#5a4636', align: 'center' });
-    line(ctx, [[400, 150], [404, 60]], { rng, stroke: fade('#6b4a30', 0.6), lw: 8 });
-    shape(ctx, ellipse(402, 56, 60, 36, 16), { fill: fade('#6f8f5a', 0.6), rng, lw: 2 });
-    text(ctx, 'Hollow Oak ?', 402, 120, { size: 20, color: '#5a4636', align: 'center' });
+    shape(ctx, rrect(436, 270, 70, 46, 6), { fill: fade('#cfeccd', 0.6), rng, lw: 2 });
+    line(ctx, [[471, 270], [471, 316]], { rng, lw: 1.4 });
+    text(ctx, 'Greenhouse ?', 471, 338, { size: 18, color: '#5a4636', align: 'center' });
+    line(ctx, [[520, 40], [522, 4]], { rng, stroke: fade('#6b4a30', 0.6), lw: 6 });
+    shape(ctx, ellipse(521, 6, 34, 18, 14), { fill: fade('#6f8f5a', 0.6), rng, lw: 2 });
     ctx.restore();
 
     // paths
@@ -147,9 +161,11 @@ export class MapScene {
       if (n.id === 'den') {
         shape(ctx, [[n.x - 26, n.y + 10], [n.x - 26, n.y - 10], [n.x, n.y - 34], [n.x + 26, n.y - 10], [n.x + 26, n.y + 10]], { fill: '#d98f6f', rng: nr, lw: 2.6 });
         shape(ctx, rrect(n.x - 7, n.y - 6, 14, 16, 6), { fill: '#6f9b6a', rng: nr, lw: 2 });
-      } else if (n.id === '1-B') {
+      } else if (n.id.endsWith('-B')) {
         ctx.save(); ctx.globalAlpha = open ? 1 : 0.4;
-        drawPumpkin(ctx, n.x, n.y + 16, { scale: 0.2, boil: b, face: done ? 'dizzy' : 'angry' });
+        if (n.id === '1-B') drawPumpkin(ctx, n.x, n.y + 16, { scale: 0.2, boil: b, face: done ? 'dizzy' : 'angry' });
+        else if (n.id === '2-B') { ctx.translate(n.x, n.y); ctx.scale(0.3, 0.3); drawPike(ctx, 0, 0, { boil: b, dizzy: done, facing: -1 }); }
+        else { ctx.translate(n.x, n.y + 24); ctx.scale(0.2, 0.2); drawScarecrow(ctx, 0, 0, { boil: b, dizzy: done }); }
         ctx.restore();
       } else {
         const col = n.locked ? '#c9c1b4' : done ? '#86c463' : open ? '#f2c14e' : '#d9cfbf';
@@ -167,7 +183,7 @@ export class MapScene {
     const info = LEVEL_INFO[n.id];
     const name = n.label || info?.name || '';
     panel(ctx, W / 2 - 250, H - 92, 500, 78, { seed: 120, r: 16 });
-    text(ctx, n.locked ? name : (info ? `${n.id === '1-B' ? 'Boss' : n.id}  ·  ${name}` : name), W / 2, H - 58, { size: 26, align: 'center', ui: true });
+    text(ctx, n.locked ? name : (info ? `${n.id.endsWith('-B') ? 'Boss' : n.id}  ·  ${name}` : name), W / 2, H - 58, { size: 26, align: 'center', ui: true });
     if (info && info.seeds) {
       const s = d.seeds[n.id] || [];
       for (let k = 0; k < 3; k++) drawSeed(ctx, W / 2 + 160 + k * 26, H - 64, { ghost: !s[k], boil: b, t: 0 });
@@ -175,10 +191,10 @@ export class MapScene {
     const sub = n.id === 'den' ? 'Your home: furniture, wardrobe and settings' : n.locked ? 'Coming in the next build' : d.cleared[n.id] ? 'Cleared! Play again to find more golden seeds' : 'Not cleared yet';
     text(ctx, `${sub}   ·   ${fmt('{jump}')} to enter`, W / 2, H - 28, { size: 18, align: 'center', color: '#7a6656', ui: true });
 
-    // lives + acorns
-    panel(ctx, W - 250, 12, 236, 46, { seed: 121, r: 14 });
-    for (let k = 0; k < Math.max(5, d.lives); k++) drawPaw(ctx, W - 230 + k * 20, 37, 0.8, k < d.lives, b);
-    drawAcorn(ctx, W - 56, 32, 0.9, b); text(ctx, '' + d.acorns, W - 42, 42, { size: 20 });
-    text(ctx, 'Foxhollows', 24, 46, { size: 40, color: shade('#b5503a', -0.1), outline: '#fffaf0' });
+    // lives + acorns (bottom right, clear of the regions at the top)
+    panel(ctx, W - 226, H - 60, 214, 46, { seed: 121, r: 14 });
+    for (let k = 0; k < Math.max(5, d.lives); k++) drawPaw(ctx, W - 208 + k * 17, H - 35, 0.7, k < d.lives, b);
+    drawAcorn(ctx, W - 50, H - 40, 0.9, b); text(ctx, '' + d.acorns, W - 36, H - 30, { size: 20 });
+    text(ctx, 'Foxhollows', 16, H - 16, { size: 34, color: shade('#b5503a', -0.1), outline: '#fffaf0' });
   }
 }

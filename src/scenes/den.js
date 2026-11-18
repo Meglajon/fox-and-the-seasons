@@ -9,9 +9,10 @@ import { drawThimble, drawStoneGem, drawPaw, drawAcorn } from '../art/critters.j
 import { FURN, SLOT, drawFurniture } from '../art/furniture.js';
 import { SEASON_COLOR, SEASON_ORDER } from '../art/palettes.js';
 import { Player } from '../game/player.js';
-import { LevelScene, SPRING_LETTER } from '../game/level.js';
+import { LevelScene } from '../game/level.js';
+import { DISTRICTS } from '../game/story.js';
 import { slotFree } from '../game/progress.js';
-import { Dialogue, Choice, LetterCard, fmt } from '../ui/ui.js';
+import { Dialogue, Choice, LetterCard, ListMenu, fmt } from '../ui/ui.js';
 import { SettingsCabinet, Wardrobe, Catalogue, Storage } from '../ui/screens.js';
 import { playMusic, TRACK_NAMES } from '../audio/music.js';
 import { sfx } from '../audio/sfx.js';
@@ -95,11 +96,16 @@ export class DenScene {
       case 'fire': {
         const n = Object.values(d.stones).filter(Boolean).length;
         pushOverlay(new Dialogue([{ who: null, text: `The mantelpiece holds your season-stones. You have found ${n} of 4.` }], () => {
-          if (d.letters.includes('spring')) {
-            pushOverlay(new Choice('Read the spring memory letter again?', ['Read it', 'Not now'], (c) => {
-              if (c === 0) pushOverlay(new LetterCard('A memory letter (1 of 4)', SPRING_LETTER, '— T.'));
-            }));
-          }
+          const letters = Object.entries(DISTRICTS).filter(([, D]) => d.letters.includes(D.letterKey));
+          if (!letters.length) return;
+          pushOverlay(new ListMenu({
+            title: 'Memory letters',
+            items: letters.map(([num, D]) => ({
+              label: `Letter ${num}: ${D.name}`,
+              select: () => pushOverlay(new LetterCard(`A memory letter (${num} of 4)`, D.letter, '— T.')),
+            })),
+            note: 'Tucked behind the mantel clock.',
+          }));
         }));
         break;
       }

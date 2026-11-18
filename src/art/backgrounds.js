@@ -59,9 +59,18 @@ function scenery(ctx, pal, off, base, boil) {
     const r = hash2(i, 3, pal.theme === 'square' ? 1 : 2);
     const x = i * span - off + r * 60;
     const rng = rngFor(i * 17 + 5, boil);
-    if (pal.theme === 'square') {
+    const th = pal.theme;
+    if (th === 'square') {
       if (((i % 7) + 7) % 7 === 3) clockTower(ctx, x, base, pal, rng);
       else house(ctx, x, base, pal, rng, r);
+    } else if (th === 'pond' || th === 'pondboss') {
+      if (((i % 6) + 6) % 6 === 2) mill(ctx, x, base, pal, rng);
+      else if (r < 0.55) pine(ctx, x, base, pal, rng, r);
+      else reeds(ctx, x, base, pal, rng, r);
+    } else if (th === 'orchard' || th === 'orchardboss') {
+      if (r < 0.6) appleTree(ctx, x, base, pal, rng, r);
+      else if (r < 0.8) haystack(ctx, x, base, pal, rng);
+      else fence(ctx, x, base, pal, rng);
     } else {
       if (r < 0.55) tree(ctx, x, base, pal, rng, r);
       else bigFlower(ctx, x, base, pal, rng, r);
@@ -96,6 +105,50 @@ function tree(ctx, x, base, pal, rng, r) {
   shape(ctx, ellipse(x, base - h * 0.75, 48 + r * 18, 40 + r * 10, 16), { fill: r > 0.3 ? c : pal.leaf, rng, lw: 2.2, wob: 2 });
   shape(ctx, ellipse(x - 26, base - h * 0.62, 26, 22, 12), { fill: pal.leaf, rng, lw: 2, wob: 1.6 });
   for (let k = 0; k < 4; k++) dot(ctx, x - 30 + rng() * 60, base - h * 0.8 + rng() * 40, 3, pal.flower1);
+}
+
+function pine(ctx, x, base, pal, rng, r) {
+  const h = 120 + r * 60;
+  line(ctx, [[x, base + 20], [x, base - h * 0.3]], { rng, stroke: pal.trunk, lw: 6 });
+  for (let k = 0; k < 3; k++) {
+    const y = base - h * (0.25 + k * 0.25), w = 52 - k * 13;
+    shape(ctx, [[x - w, y + 18], [x, y - 34], [x + w, y + 18]], { fill: pal.leaf, rng, lw: 2.2, step: 14 });
+    shape(ctx, [[x - w * 0.7, y + 8], [x, y - 30], [x + w * 0.7, y + 8], [x + w * 0.3, y + 2], [x - w * 0.3, y + 4]], { fill: pal.grass, stroke: null, rng, wash: false, step: 10 });
+  }
+}
+function reeds(ctx, x, base, pal, rng, r) {
+  for (let k = 0; k < 6; k++) {
+    const rx = x + k * 9 - 20, h = 50 + rng() * 40;
+    line(ctx, [[rx, base + 20], [rx + 4, base - h * 0.5], [rx + 2, base - h]], { rng, stroke: pal.grassDark, lw: 3 });
+    if (k % 2) shape(ctx, ellipse(rx + 2, base - h + 4, 4, 12, 8), { fill: pal.trunk, rng, lw: 1.6 });
+  }
+}
+function mill(ctx, x, base, pal, rng) {
+  shape(ctx, [[x, base + 30], [x + 6, base - 110], [x + 80, base - 110], [x + 86, base + 30]], { fill: pal.house2, rng, lw: 2.2 });
+  shape(ctx, [[x - 8, base - 106], [x + 43, base - 160], [x + 94, base - 106]], { fill: pal.roof, rng, lw: 2.2 });
+  shape(ctx, [[x - 4, base - 112], [x + 43, base - 156], [x + 90, base - 112]], { fill: pal.grass, stroke: null, rng, wash: false });
+  const cx = x + 112, cy = base - 30;
+  shape(ctx, ellipse(cx, cy, 46, 46, 22), { stroke: pal.woodDark, lw: 5, rng });
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    line(ctx, [[cx, cy], [cx + Math.cos(a) * 46, cy + Math.sin(a) * 46]], { rng, stroke: pal.wood, lw: 4 });
+  }
+}
+function appleTree(ctx, x, base, pal, rng, r) {
+  const h = 100 + r * 60;
+  shape(ctx, [[x - 8, base + 20], [x - 5, base - h * 0.55], [x + 5, base - h * 0.55], [x + 9, base + 20]], { fill: pal.trunk, rng, lw: 2 });
+  shape(ctx, ellipse(x, base - h * 0.72, 54, 42, 18), { fill: r > 0.3 ? pal.leaf : pal.flower2, rng, lw: 2.2, wob: 2 });
+  shape(ctx, ellipse(x + 28, base - h * 0.6, 26, 20, 12), { fill: pal.flower2, rng, lw: 2, wob: 1.6 });
+  for (let k = 0; k < 5; k++) dot(ctx, x - 34 + rng() * 68, base - h * 0.8 + rng() * 40, 4, '#c9473d');
+}
+function haystack(ctx, x, base, pal, rng) {
+  shape(ctx, [[x - 40, base + 20], [x - 34, base - 20], [x, base - 52], [x + 34, base - 20], [x + 40, base + 20]], { fill: pal.flower2, rng, lw: 2.2, step: 14 });
+  for (let k = 0; k < 4; k++) line(ctx, [[x - 24 + k * 14, base - 10], [x - 20 + k * 14, base - 30]], { rng, stroke: shade(pal.flower2, -0.3), lw: 1.6 });
+}
+function fence(ctx, x, base, pal, rng) {
+  for (let k = 0; k < 4; k++) shape(ctx, rrect(x + k * 22 - 40, base - 40, 8, 60, 2), { fill: pal.wood, rng, lw: 1.8 });
+  line(ctx, [[x - 46, base - 28], [x + 46, base - 30]], { rng, stroke: pal.woodDark, lw: 4 });
+  line(ctx, [[x - 46, base - 10], [x + 46, base - 12]], { rng, stroke: pal.woodDark, lw: 4 });
 }
 
 function bigFlower(ctx, x, base, pal, rng, r) {

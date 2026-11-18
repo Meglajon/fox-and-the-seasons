@@ -3,6 +3,14 @@ import { audio, inst, drums } from './audio.js';
 
 export const TRACK_NAMES = {
   title: 'A Year Turns', den: 'The Den', map: 'Foxhollows, Paused', bloom: 'Bloomwood', boss: 'Grumpy Critters',
+  pond: 'Millpond Under Glass', orchard: 'Copperleaf Drift',
+};
+
+// In each district's track, switching to that district's season fades in its own instruments.
+export const SEASON_LAYERS = {
+  bloom: { season: 'spring', on: { lead: 0.9, birds: 1, shaker: 0.8, hum: 0.2 }, off: { lead: 0, birds: 0, shaker: 0, hum: 1 } },
+  pond: { season: 'winter', on: { lead: 1, chimes: 1, hum: 0.25 }, off: { lead: 0, chimes: 0, hum: 1 } },
+  orchard: { season: 'autumn', on: { lead: 1, wind: 1, hum: 0.25 }, off: { lead: 0, wind: 0, hum: 1 } },
 };
 
 const EIGHTHS = [0, 2, 4, 6, 8, 10, 12, 14];
@@ -103,6 +111,60 @@ export const TRACKS = {
     },
   },
 
+  // 6. Millpond Reach: felt piano and soft brushes; Winter adds glockenspiel and wind chimes.
+  pond: {
+    bpm: 68, swing: 0.12, bars: 8,
+    layers: {
+      keys: { v: 0.85 }, bass: { v: 0.9 }, drums: { v: 0.7, drum: true }, pad: { v: 0.8 }, hum: { v: 1 },
+      lead: { v: 0 }, chimes: { v: 0 },
+    },
+    chords: [
+      { n: [53, 57, 60, 64], b: 38 }, { n: [57, 62, 65, 69], b: 46 }, { n: [58, 62, 65, 69], b: 43 },
+      { n: [55, 57, 62, 64], b: 45, n2: [55, 57, 61, 64] }, { n: [53, 57, 60, 64], b: 38 }, { n: [53, 57, 60, 64], b: 41 },
+      { n: [53, 55, 58, 62], b: 43 }, { n: [55, 57, 61, 64], b: 45 },
+    ],
+    comp: { layer: 'keys', inst: 'piano', hits: [[0, 10, 0.5], [10, 6, 0.35]] },
+    bass: { layer: 'bass', hits: [[0, 0, 10, 0.8], [10, 7, 6, 0.55]] },
+    pad: { layer: 'pad' },
+    drums: { layer: 'drums', kick: [0, 10], brush: [4, 12], hat: EIGHTHS, hv: 0.25 },
+    mel: [
+      { layer: 'lead', inst: 'musicbox', notes: POND_MEL() },
+      { layer: 'hum', inst: 'piano', minLen: 4, v: 0.5, notes: POND_MEL() },
+    ],
+    extra(s, t, L) {
+      const bar = s >> 4, st = s & 15;
+      if ((bar % 2 === 1 && st === 9) || (bar % 4 === 2 && st === 3)) {
+        [96, 93, 98].forEach((m, i) => inst.musicbox(L.chimes, t + i * 0.09, m - 12, 0.4, 0.6));
+      }
+    },
+  },
+
+  // 7. Copperleaf Orchard: nylon guitar and dusty drums; Autumn adds a warm Rhodes lead and wind.
+  orchard: {
+    bpm: 78, swing: 0.16, bars: 8,
+    layers: {
+      keys: { v: 0.9 }, bass: { v: 1 }, drums: { v: 0.85, drum: true }, pad: { v: 0.5 }, hum: { v: 1 },
+      lead: { v: 0 }, wind: { v: 0, drum: true },
+    },
+    chords: [
+      { n: [52, 55, 59, 62], b: 48 }, { n: [50, 54, 57, 62], b: 47 }, { n: [55, 59, 62, 66], b: 40 },
+      { n: [55, 60, 64, 67], b: 45 }, { n: [55, 60, 64, 67], b: 45 }, { n: [54, 59, 62, 66], b: 43 },
+      { n: [52, 55, 59, 64], b: 48 }, { n: [54, 57, 60, 62], b: 50 },
+    ],
+    comp: { layer: 'keys', inst: 'nylon', hits: [[0, 3, 0.8], [3, 3, 0.5], [6, 2, 0.6], [8, 3, 0.7], [11, 3, 0.5], [14, 2, 0.5]] },
+    bass: { layer: 'bass', hits: [[0, 0, 6, 0.9], [6, 7, 2, 0.5], [8, 12, 4, 0.7], [12, 7, 4, 0.6]] },
+    pad: { layer: 'pad' },
+    drums: { layer: 'drums', kick: [0, 7, 10], snare: [4, 12], sv: 0.45, hat: EIGHTHS, hv: 0.4, ghost: true },
+    mel: [
+      { layer: 'lead', inst: 'ep', notes: ORCHARD_MEL() },
+      { layer: 'hum', inst: 'nylon', minLen: 4, v: 0.55, notes: ORCHARD_MEL() },
+    ],
+    extra(s, t, L) {
+      const bar = s >> 4, st = s & 15;
+      if (bar % 2 === 0 && st === 0) drums.noiseSweep(L.wind, t, 1.6, 400, 1400, 0.5);
+    },
+  },
+
   // 5. Mini-boss — Grumpy Critters
   boss: {
     bpm: 96, swing: 0.05, bars: 4,
@@ -125,6 +187,26 @@ export const TRACKS = {
   },
 };
 
+function POND_MEL() {
+  return [
+    [0, 0, 81, 4], [0, 4, 77, 4], [0, 8, 76, 4], [0, 12, 74, 4], [1, 0, 77, 6], [1, 6, 76, 2], [1, 8, 74, 8],
+    [2, 0, 74, 4], [2, 4, 77, 4], [2, 8, 81, 6], [2, 14, 79, 2], [3, 0, 76, 12], [3, 12, 73, 4],
+    [4, 0, 81, 4], [4, 4, 84, 4], [4, 8, 81, 4], [4, 12, 79, 4], [5, 0, 77, 8], [5, 8, 81, 8],
+    [6, 0, 79, 4], [6, 4, 77, 4], [6, 8, 74, 4], [6, 12, 70, 4], [7, 0, 73, 8], [7, 8, 76, 8],
+  ];
+}
+function ORCHARD_MEL() {
+  return [
+    [0, 0, 76, 2], [0, 2, 79, 2], [0, 4, 83, 4], [0, 8, 81, 2], [0, 10, 79, 2], [0, 12, 76, 4],
+    [1, 0, 74, 4], [1, 4, 78, 4], [1, 8, 81, 8],
+    [2, 0, 79, 2], [2, 2, 83, 2], [2, 4, 86, 4], [2, 8, 83, 4], [2, 12, 79, 4],
+    [3, 0, 81, 6], [3, 6, 79, 2], [3, 8, 76, 8],
+    [4, 0, 72, 4], [4, 4, 76, 4], [4, 8, 79, 4], [4, 12, 83, 4],
+    [5, 0, 83, 8], [5, 8, 81, 4], [5, 12, 79, 4],
+    [6, 0, 76, 4], [6, 4, 79, 4], [6, 8, 84, 8],
+    [7, 0, 81, 4], [7, 4, 78, 4], [7, 8, 74, 8],
+  ];
+}
 function BLOOM_MEL() {
   return [
     [0, 0, 72, 2], [0, 2, 69, 2], [0, 4, 72, 2], [0, 6, 77, 4], [0, 10, 76, 2], [0, 12, 72, 4],

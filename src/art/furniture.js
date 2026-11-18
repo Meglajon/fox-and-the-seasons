@@ -23,6 +23,8 @@ export const FURN = {
   paint_fox: { name: 'Painting: Foxhollows', layer: 'wall', w: 2, src: 'seeds', how: 'Collect 10 golden seeds' },
   paint_bloom: { name: 'Painting: Bloomwood', layer: 'wall', w: 2, src: 'seeds', how: 'Collect 15 golden seeds' },
   pumpkin_lamp: { name: 'Pumpkin lamp', layer: 'floor', w: 1, src: 'trophy', how: 'Beat the Overgrown Pumpkin' },
+  pike_bench: { name: 'Frozen Pike bench', layer: 'floor', w: 2, src: 'trophy', how: 'Beat Old Pike' },
+  scarecrow_stand: { name: 'Scarecrow coat-stand', layer: 'floor', w: 1, src: 'trophy', how: 'Beat the Prize Scarecrow' },
 };
 
 export function drawFurniture(ctx, id, x, floorY, flip, boil, season) {
@@ -111,6 +113,21 @@ export function drawFurniture(ctx, id, x, floorY, flip, boil, season) {
       shape(ctx, [[cx - 10, y - 24], [cx - 4, y - 20], [cx - 10, y - 16]], { fill: '#ffd774', rng, lw: 1.4, step: 4, wash: false });
       shape(ctx, [[cx + 10, y - 24], [cx + 4, y - 20], [cx + 10, y - 16]], { fill: '#ffd774', rng, lw: 1.4, step: 4, wash: false });
       shape(ctx, rrect(cx - 3, y - 40, 6, 8, 2), { fill: '#6e8a3a', rng, lw: 1.6 });
+      break;
+    case 'pike_bench':
+      shape(ctx, rrect(x + 8, y - 30, w - 16, 14, 5), { fill: '#dcf0fb', rng, lw: 2.4, stroke: '#7fb6e0' });
+      shape(ctx, ellipse(cx, y - 23, w / 2 - 22, 5, 14), { fill: '#7f9a7a', rng, lw: 1.6, wash: false });
+      dot(ctx, x + w - 26, y - 24, 2, '#3b2a26');
+      shape(ctx, rrect(x + 12, y - 16, 10, 16, 3), { fill: '#a88b6c', rng, lw: 2 });
+      shape(ctx, rrect(x + w - 22, y - 16, 10, 16, 3), { fill: '#a88b6c', rng, lw: 2 });
+      break;
+    case 'scarecrow_stand':
+      line(ctx, [[cx, y - 2], [cx, y - 96]], { rng, lw: 4, stroke: '#8a6040' });
+      line(ctx, [[cx - 20, y - 80], [cx + 20, y - 80]], { rng, lw: 4, stroke: '#a87a4c' });
+      shape(ctx, [[cx - 18, y - 80], [cx + 18, y - 80], [cx + 14, y - 40], [cx - 14, y - 40]], { fill: '#7d6a9e', rng, lw: 2, step: 8 });
+      shape(ctx, ellipse(cx, y - 100, 16, 4, 10), { fill: '#d9b45a', rng, lw: 2 });
+      shape(ctx, [[cx - 9, y - 100], [cx - 7, y - 112], [cx + 7, y - 112], [cx + 9, y - 100]], { fill: '#d9b45a', rng, lw: 2, step: 6 });
+      shape(ctx, ellipse(cx, y - 3, 14, 4, 10), { fill: '#6e4a30', rng, lw: 2 });
       break;
     case 'clock':
       shape(ctx, ellipse(cx, WALL_Y, 20, 20, 16), { fill: '#fbf0dc', rng, lw: 2.4, wash: false });

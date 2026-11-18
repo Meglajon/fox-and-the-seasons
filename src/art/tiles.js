@@ -33,6 +33,91 @@ function paint(x, ch, mask, v, pal, rng) {
   else if (ch === 'L') crate(x, pal, rng, 'berry');
   else if (ch === 'u') crate(x, pal, rng, null);
   else if (ch === 'b') bramble(x, v, pal, rng);
+  else if (ch === '~') water(x, mask, v, pal, rng, false);
+  else if (ch === 'R') water(x, mask, v, pal, rng, true);
+  else if (ch === 'I') ice(x, mask, v, pal, rng);
+  else if (ch === 'w') waterfall(x, v, pal, rng);
+  else if (ch === 'Y') frozenFall(x, v, pal, rng);
+  else if (ch === 'i') floe(x, v, pal, rng, false);
+  else if (ch === 'k') floe(x, v, pal, rng, true);
+  else if (ch === 'p') pileGhost(x, v, pal, rng);
+  else if (ch === 'P') pile(x, mask, v, pal, rng);
+}
+
+// Water: mask bit 1 = more water above (so no surface ripple on this tile).
+function water(x, mask, v, pal, rng, rapids) {
+  const top = !(mask & 1);
+  x.fillStyle = rapids ? pal.waterDark : pal.water;
+  x.globalAlpha = 0.92;
+  x.fillRect(-0.6, top ? 8 : -0.6, T + 1.2, T + 1.2 - (top ? 8 : 0));
+  x.globalAlpha = 1;
+  x.strokeStyle = shade(pal.water, 0.45); x.lineWidth = 1.6; x.lineCap = 'round';
+  for (let i = 0; i < (rapids ? 4 : 2); i++) {
+    const yy = (top ? 18 : 6) + rng() * 26, xx = rng() * 30;
+    x.beginPath(); x.moveTo(xx, yy); x.lineTo(xx + (rapids ? 18 : 10), yy); x.stroke();
+  }
+  if (top) {
+    const pts = [];
+    for (let i = 0; i <= 6; i++) pts.push([-1 + (i * (T + 2)) / 6, 8 + Math.sin(i * 1.6 + v * 2) * (rapids ? 3 : 2)]);
+    line(x, pts, { rng, lw: 2.2, stroke: pal.waterDark, wob: 0.6, step: 20 });
+    if (rapids) for (let i = 0; i < 3; i++) dot(x, 6 + rng() * 36, 6 + rng() * 4, 2.2, '#ffffff');
+  }
+}
+
+function ice(x, mask, v, pal, rng) {
+  const top = !(mask & 1);
+  x.fillStyle = pal.ice; x.fillRect(-0.6, -0.6, T + 1.2, T + 1.2);
+  x.fillStyle = shade(pal.ice, 0.5); x.globalAlpha = 0.8;
+  x.beginPath(); x.moveTo(6, 10 + v * 3); x.lineTo(20, 6); x.lineTo(14, 22); x.closePath(); x.fill();
+  x.globalAlpha = 1;
+  line(x, [[26 + rng() * 6, 14], [32, 26], [40, 30]], { rng, stroke: pal.iceDark, lw: 1.4, wob: 0.4 });
+  if (top) line(x, [[-1, 0], [T + 1, 0]], { rng, lw: 2.4, stroke: pal.iceDark, wob: 0.6 });
+}
+
+function waterfall(x, v, pal, rng) {
+  x.globalAlpha = 0.75; x.fillStyle = pal.water; x.fillRect(6, -0.6, T - 12, T + 1.2); x.globalAlpha = 1;
+  x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.lineCap = 'round';
+  for (let i = 0; i < 3; i++) {
+    const xx = 10 + i * 12 + rng() * 4, y0 = rng() * 20;
+    x.beginPath(); x.moveTo(xx, y0); x.lineTo(xx, y0 + 18 + rng() * 10); x.stroke();
+  }
+}
+
+function frozenFall(x, v, pal, rng) {
+  shape(x, [[4, -1], [T - 4, -1], [T - 2, T + 1], [2, T + 1]], { fill: pal.ice, rng, lw: 2.2, wob: 0.6, stroke: pal.iceDark });
+  for (let i = 0; i < 2; i++) line(x, [[12 + i * 18, 4], [10 + i * 18, 40]], { rng, stroke: '#ffffff', lw: 2.2 });
+  shape(x, [[8, T - 2], [12, T + 8], [16, T - 2]], { fill: pal.ice, rng, lw: 1.4, step: 6, stroke: pal.iceDark });
+}
+
+// Cracking ice floe: a slab you can stand on (cracks unless Winter keeps it frozen).
+function floe(x, v, pal, rng, cracked) {
+  x.fillStyle = pal.waterDark; x.globalAlpha = 0.92; x.fillRect(-0.6, 12, T + 1.2, T - 11.4); x.globalAlpha = 1;
+  shape(x, rrect(1, 2, T - 2, 18, 6), { fill: pal.ice, rng, lw: 2.4, stroke: pal.iceDark, wob: 0.7 });
+  dot(x, 12 + v * 6, 9, 2.4, '#ffffff');
+  if (cracked) {
+    line(x, [[8, 4], [18, 12], [14, 20]], { rng, lw: 1.8 });
+    line(x, [[30, 3], [26, 11], [36, 19]], { rng, lw: 1.8 });
+  }
+}
+
+function pileGhost(x, v, pal, rng) {
+  x.save(); x.globalAlpha = 0.55; x.setLineDash([5, 6]);
+  shape(x, rrect(3, 3, T - 6, T - 6, 8), { stroke: pal.pile, lw: 2, rng, wob: 0.5, wash: false });
+  x.restore();
+  x.fillStyle = pal.pile; x.globalAlpha = 0.6;
+  for (let i = 0; i < 2; i++) { x.beginPath(); x.ellipse(10 + rng() * 28, 10 + rng() * 28, 4, 2, rng() * 3, 0, 7); x.fill(); }
+  x.globalAlpha = 1;
+}
+
+function pile(x, mask, v, pal, rng) {
+  const top = !(mask & 1);
+  x.fillStyle = shade(pal.pile, -0.15); x.fillRect(-0.6, top ? 10 : -0.6, T + 1.2, T + 1.2);
+  const n = top ? 9 : 6;
+  for (let i = 0; i < n; i++) {
+    const cx = 4 + rng() * 40, cy = (top ? 6 : 2) + rng() * 40;
+    shape(x, ellipse(cx, cy, 8, 4, 8, rng() * 3), { fill: i % 3 ? pal.pile : pal.pile2, rng, lw: 1.3, wob: 0.3, wash: false });
+  }
+  if (top) line(x, [[-1, 9], [12, 3], [26, 8], [38, 2], [T + 1, 8]], { rng, lw: 2.2, wob: 0.5 });
 }
 
 function ground(x, mask, v, pal, rng) {

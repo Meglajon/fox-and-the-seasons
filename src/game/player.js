@@ -58,20 +58,28 @@ export class Player {
     let dir = (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0);
     if (this.lock > 0) { this.lock -= dt; dir = this.lockDir; }
     const maxV = sprint ? 370 : 240;
+    // Frozen water and ice floes are slippery: slow to start, slow to stop.
+    const ice = this.onGround && world.onIce?.(this);
     if (dir) {
       const turning = Math.sign(this.vx) === -dir;
-      const acc = this.onGround ? (turning ? 3000 : 1600) : 1150;
+      const acc = this.onGround ? (ice ? 650 : turning ? 3000 : 1600) : 1150;
       if (Math.abs(this.vx) <= maxV || turning) this.vx = approach(this.vx, dir * maxV, acc * dt);
       else this.vx = approach(this.vx, dir * maxV, 500 * dt);
       this.facing = dir;
     } else {
-      this.vx = approach(this.vx, 0, (this.onGround ? 1800 : 380) * dt);
+      this.vx = approach(this.vx, 0, (this.onGround ? (ice ? 260 : 1800) : 380) * dt);
     }
 
     const holding = input.down('jump');
     if (this.bounceHold > 0) this.bounceHold -= dt;
+    if (this.inGust > 0) this.inGust -= dt;
     const g = this.vy < 0 ? (holding || this.bounceHold > 0 ? 2200 : 4800) : 2400;
     this.vy = Math.min(this.vy + g * dt, 920);
+    // Autumn: hold jump while falling to glide on a leaf.
+    this.gliding = this.season === 'autumn' && !this.onGround && this.vy > 0 && holding && !this.climb;
+    if (this.gliding) this.vy = Math.min(this.vy, 120);
+    // Running water in a waterfall pushes you down.
+    if (world.inWaterfall?.(this)) this.vy = Math.min(this.vy + 1600 * dt, 520);
 
     this.wall = 0;
     if (!this.onGround && this.vy > -80 && dir && world.touchWall(this, dir)) {

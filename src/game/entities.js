@@ -14,125 +14,9 @@ import { fmt } from '../ui/ui.js';
 
 const G = 2200;
 
-// ---------------- critters ----------------
-export class Critter {
-  constructor(kind, tx, row) {
-    this.kind = kind; // grub | snap | buzz
-    this.t = Math.random() * 6;
-    this.asleep = false; this.mode = 'awake'; this.dead = false;
-    this.seed = tx * 13 + row;
-    const sizes = { grub: [34, 24], snap: [28, 40], buzz: [30, 26] };
-    [this.w, this.h] = sizes[kind];
-    this.x = tx * T + T / 2 - this.w / 2;
-    this.y = (row + 1) * T - this.h;
-    this.vx = kind === 'grub' ? -45 : 0; this.vy = 0;
-    this.facing = -1; this.bounces = 0; this.zT = 0; this.kickCool = 0;
-    this.x0 = this.x; this.y0 = this.y;
-    this.snapT = 1 + Math.random(); this.open = 0;
-  }
-  get cx() { return this.x + this.w / 2; }
-
-  sleep(L) {
-    this.asleep = true; this.mode = 'rest';
-    this.vx = 0; this.vy = this.kind === 'buzz' ? 0 : Math.min(this.vy, 0);
-    if (this.kind !== 'snap') {
-      const b = this.y + this.h;
-      this.w = 30; this.h = 28; this.y = b - this.h;
-    }
-    L.burst(this.cx, this.y + 6, 'spark', 6);
-  }
-  get carriable() { return this.asleep && this.kind !== 'snap' && this.mode !== 'carried'; }
-
-  update(dt, L) {
-    this.t += dt;
-    if (this.kickCool > 0) this.kickCool -= dt;
-    if (this.asleep) return this.updateSleep(dt, L);
-    const p = L.player;
-    if (this.kind === 'grub') {
-      this.vy = Math.min(this.vy + G * dt, 900);
-      const pv = this.vx;
-      L.move(this, dt);
-      if (this.hitX) this.vx = -pv;
-      if (this.onGround) {
-        const ahead = this.vx > 0 ? this.x + this.w + 2 : this.x - 2;
-        if (!L.solidPx(ahead, this.y + this.h + 4) && !L.onewayPx(ahead, this.y + this.h + 4)) this.vx = -this.vx;
-      }
-      this.facing = Math.sign(this.vx) || this.facing;
-    } else if (this.kind === 'snap') {
-      if (Math.abs(p.cx - this.cx) < 7 * T && Math.abs(p.cy - this.y) < 4 * T) {
-        this.facing = p.cx > this.cx ? 1 : -1;
-        this.snapT -= dt;
-        if (this.snapT < 0.35) this.open = Math.min(1, this.open + dt * 5);
-        if (this.snapT <= 0) {
-          this.snapT = 2.4;
-          L.ents.push(new SeedShot(this.cx + this.facing * 12, this.y + 8, this.facing * 210, -380));
-        }
-      }
-      if (this.snapT > 0.35) this.open = Math.max(0, this.open - dt * 4);
-    } else if (this.kind === 'buzz') {
-      const vert = this.vertical;
-      const s = Math.sin(this.t * 1.3);
-      const px = this.x;
-      if (vert) { this.y = this.y0 + s * T * 2; this.x = this.x0 + Math.sin(this.t * 2.6) * 6; }
-      else { this.x = this.x0 + s * T * 2; this.y = this.y0 + Math.sin(this.t * 2.6) * 10; }
-      const dx = this.x - px;
-      if (Math.abs(dx) > 0.01) this.facing = Math.sign(dx);
-    }
-    if (this.y > L.h * T + 200) this.dead = true;
-  }
-
-  updateSleep(dt, L) {
-    this.zT += dt;
-    if (this.zT > 1.1 && this.mode !== 'thrown') { this.zT = 0; L.parts.push({ type: 'z', x: this.cx + 8, y: this.y, vx: 12, vy: -24, life: 1.6, max: 1.6 }); }
-    if (this.mode === 'carried') {
-      const p = L.player;
-      this.x = p.cx - this.w / 2 + p.facing * 4;
-      this.y = p.y - this.h + 6;
-      return;
-    }
-    if (this.kind === 'snap') return;
-    this.vy = Math.min(this.vy + G * dt, 900);
-    const pv = this.vx;
-    L.move(this, dt);
-    if (this.mode === 'thrown') {
-      if (this.hitX) {
-        this.vx = -pv * 0.85; this.bounces++; sfx('bump');
-        if (this.bounces > 2) { this.mode = 'rest'; this.vx = 0; }
-      }
-      if (this.onGround && Math.abs(this.vx) < 60) this.mode = 'rest';
-      for (const e of L.critters) {
-        if (e !== this && !e.asleep && overlap(this, e)) { e.sleep(L); sfx('bop'); L.addScore(e.cx, e.y); }
-      }
-      if (L.boss && L.boss.hitBy(this, L)) { this.mode = 'rest'; this.vx = 0; this.dead = true; L.burst(this.cx, this.y, 'spark', 10); }
-    } else if (this.onGround) this.vx *= Math.pow(0.001, dt);
-    if (this.y > L.h * T + 200) this.dead = true;
-  }
-
-  draw(ctx, L) {
-    const x = this.cx - L.camX, y = this.y + this.h - L.camY, b = engine.boil;
-    const o = { facing: this.facing, t: this.t, asleep: this.asleep, boil: b, seed: this.seed, open: this.open };
-    if (this.kind === 'grub') drawGrub(ctx, x, y, o);
-    else if (this.kind === 'snap') drawSnap(ctx, x, y, o);
-    else drawBuzzer(ctx, x, y, o);
-  }
-}
-
-export class SeedShot {
-  constructor(x, y, vx, vy) { this.x = x - 6; this.y = y - 6; this.w = 12; this.h = 12; this.vx = vx; this.vy = vy; this.t = 0; this.dead = false; this.hurts = true; }
-  update(dt, L) {
-    this.t += dt;
-    this.vy += 900 * dt;
-    this.x += this.vx * dt; this.y += this.vy * dt;
-    if (L.solidPx(this.x + 6, this.y + 6) || this.t > 4) { this.dead = true; L.burst(this.x + 6, this.y + 6, 'dust', 3); }
-  }
-  draw(ctx, L) {
-    const x = this.x + 6 - L.camX, y = this.y + 6 - L.camY;
-    ctx.save(); ctx.translate(x, y); ctx.rotate(this.t * 10);
-    ctx.fillStyle = '#7d4a2b'; ctx.beginPath(); ctx.ellipse(0, 0, 6, 4, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#3b2a26'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.restore();
-  }
-}
+import { Critter } from './critter.js';
+import { drawPuddle, drawRook } from '../art/critters2.js';
+export { Critter, SeedShot, AcornDrop } from './critter.js';
 
 // ---------------- pickups ----------------
 export class Acorn {
@@ -167,9 +51,9 @@ export class GoldenSeed {
 }
 
 export class StonePickup {
-  constructor(tx, row) { this.x = tx * T + 8; this.y = row * T + 4; this.w = 32; this.h = 40; this.t = 0; this.dead = false; }
-  update(dt, L) { this.t += dt; if (overlap(this, L.player) && !L.player.dead) { this.dead = true; L.gotStone('spring', this.x + 16, this.y + 20); } }
-  draw(ctx, L) { drawStoneGem(ctx, this.x + 16 - L.camX, this.y + 20 - L.camY + Math.sin(this.t * 2) * 4, 'spring', { t: this.t, boil: engine.boil, scale: 1.3 }); }
+  constructor(tx, row, season = 'spring') { this.season = season; this.x = tx * T + 8; this.y = row * T + 4; this.w = 32; this.h = 40; this.t = 0; this.dead = false; }
+  update(dt, L) { this.t += dt; if (overlap(this, L.player) && !L.player.dead) { this.dead = true; L.gotStone(this.season, this.x + 16, this.y + 20); } }
+  draw(ctx, L) { drawStoneGem(ctx, this.x + 16 - L.camX, this.y + 20 - L.camY + Math.sin(this.t * 2) * 4, this.season, { t: this.t, boil: engine.boil, scale: 1.3 }); }
 }
 
 export class LetterPickup {
@@ -299,8 +183,9 @@ export class NPC {
     if (near && !p.dead && (!this.talked || input.pressed('up'))) { this.talked = true; L.talk(this.who); }
   }
   draw(ctx, L) {
-    drawJuniper(ctx, this.cx - L.camX, this.base - L.camY, { facing: this.facing, t: this.t, boil: engine.boil });
-    if (this.near && this.talked) text(ctx, '↑ Talk', this.cx - L.camX, this.base - L.camY - 112, { size: 18, align: 'center', ui: true });
+    const draw = { juniper: drawJuniper, puddle: drawPuddle, rook: drawRook }[this.who] || drawJuniper;
+    draw(ctx, this.cx - L.camX, this.base - L.camY, { facing: this.facing, t: this.t, boil: engine.boil });
+    if (this.near && this.talked) text(ctx, fmt('{up}') + ' Talk', this.cx - L.camX, this.base - L.camY - 112, { size: 18, align: 'center', ui: true });
   }
 }
 
