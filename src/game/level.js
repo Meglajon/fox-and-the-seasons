@@ -254,7 +254,7 @@ export class LevelScene {
       }
       // Frozen critters are ice blocks you can stand on.
       if (!b.onGround && b === this.player) {
-        for (const e of this.critters) {
+        for (const e of this.critters || []) {
           if (!e.frozen || e.mode !== 'rest' || e.dead) continue;
           if (b.x + b.w > e.x + 3 && b.x < e.x + e.w - 3 && wasBottom <= e.y + 2 && ny + b.h >= e.y) {
             ny = e.y - b.h; b.vy = 0; b.onGround = true; break;
