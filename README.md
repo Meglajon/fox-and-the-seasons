@@ -51,18 +51,26 @@ Every key can be changed in the **settings cabinet** (Controls drawer).
 the controls sit below the game; turn it sideways and they move into columns either side of the game.
 You can switch them on or off in the settings cabinet (Display drawer → On-screen controls).
 
-## What's in this build (first playable)
+## What's in this build
 
-- Title screen with 3 save slots
-- **Fennel's Den**: move furniture around, the wardrobe (fur, scarves, hats, extras, name),
-  the settings cabinet (sound, controls, assist, display, save slots), a catalogue shop and a storage chest
+- Title screen with 3 save slots and the trailer
+- **Fennel's Den**, with Animal Crossing-style decorating: a grid with two wall heights and three floor
+  depths. Pick things up, move them cell by cell, flip them, and change the wallpaper and flooring.
+  It also has the wardrobe (fur, scarves, hats, extras, name), the settings cabinet and a storage chest.
+- **Catalogue shop**: Cozy, Garden, Harvest and Frost furniture sets, wall decor, rugs, 6 wallpapers,
+  6 floors and outfits, all bought with acorns
 - Level map of Foxhollows
 - **Foxhollows Square**: 2 tutorial levels
-- **Bloomwood**: 4 levels (including the auto-scrolling *Bramble Rush*) and the *Overgrown Pumpkin* boss
-- 5 lives, extra lives from acorns and berries, checkpoints, golden seeds, and unlockables
-- 5 original music tracks plus sound effects
+- **Bloomwood** (Spring): 4 levels and the *Overgrown Pumpkin*
+- **Millpond Reach** (Winter): 4 levels, including *The Thaw*, and *Old Pike*
+- **Copperleaf Orchard** (Autumn): 4 levels, including the *Leaf Storm* climb, and *The Prize Scarecrow*
+- **Secret burrows**: 4 hidden puzzle rooms, each holding a **Starbloom** that makes you invincible
+  for 10 seconds back in the level
+- 10 lives, extra lives from acorns and berries, checkpoints, golden seeds and unlockables
+- 7 original music tracks plus sound effects
+- On phones: on-screen controls, with the run button as a tap-on/tap-off toggle
 
-Millpond Reach, Copperleaf Orchard, Sunglass Greenhouse and the Hollow Oak come in later builds.
+The Sunglass Greenhouse (Summer) and the Hollow Oak finale come in later builds.
 
 ## Publish on GitHub Pages
 

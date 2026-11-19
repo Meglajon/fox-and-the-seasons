@@ -227,3 +227,33 @@ export function drawScarecrow(ctx, x, y, o = {}) {
   }
   ctx.restore();
 }
+
+// A mossy hollow-log burrow: the hidden way into a secret puzzle room (and the way back out).
+export function drawBurrow(ctx, x, y, o = {}) {
+  const rng = R(43, o.boil);
+  ctx.save(); ctx.translate(x, y);
+  shape(ctx, [[-30, 0], [-28, -30], [-14, -44], [14, -44], [28, -30], [30, 0]], { fill: '#8a6040', rng, lw: 2.6, step: 10 });
+  shape(ctx, ellipse(0, -18, 17, 18, 16), { fill: '#2e2420', rng, lw: 2.2, wash: false });
+  shape(ctx, ellipse(-18, -40, 14, 6, 10), { fill: '#7fae58', rng, lw: 1.8 });
+  shape(ctx, ellipse(16, -42, 10, 5, 10), { fill: '#86c463', rng, lw: 1.6 });
+  if (o.glint) {
+    ctx.globalAlpha = 0.5 + Math.sin((o.t || 0) * 5) * 0.3;
+    dot(ctx, 4, -22, 2.5, '#fff4a8'); dot(ctx, -5, -14, 1.8, '#fff4a8');
+  }
+  ctx.restore();
+}
+
+// The Starbloom: a rainbow flower that makes Fennel invincible for a little while.
+export const RAINBOW = ['#f4a3bf', '#f2c14e', '#86c463', '#7fb6e0', '#b9a3e8'];
+export function drawStarbloom(ctx, x, y, t = 0, boil = 0, scale = 1) {
+  const rng = R(44, boil);
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+  ctx.globalAlpha = 0.35 + Math.sin(t * 4) * 0.1; dot(ctx, 0, 0, 34, '#fff6c8'); ctx.globalAlpha = 1;
+  ctx.rotate(t * 0.8);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    shape(ctx, ellipse(Math.cos(a) * 13, Math.sin(a) * 13, 11, 7, 10, a), { fill: RAINBOW[i], rng, lw: 2 });
+  }
+  shape(ctx, ellipse(0, 0, 8, 8, 12), { fill: '#fff6c8', rng, lw: 2 });
+  ctx.restore();
+}

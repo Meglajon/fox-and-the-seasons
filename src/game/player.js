@@ -17,7 +17,7 @@ export class Player {
     this.wall = 0; this.climb = null; this.carry = null;
     this.inv = 0; this.charm = 0; this.season = null; this.lastSeason = null; this.bubble = 0;
     this.t = 0; this.phase = 0; this.squash = 0; this.bounceHold = 0;
-    this.dead = false; this.frozen = false;
+    this.dead = false; this.frozen = false; this.star = 0;
   }
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
@@ -39,6 +39,7 @@ export class Player {
   update(dt, world) {
     this.t += dt;
     if (this.inv > 0) this.inv -= dt;
+    if (this.star > 0) this.star -= dt;
     if (this.charm > 0) {
       this.charm -= dt;
       if (this.charm <= 0 && this.lastSeason) { this.season = this.lastSeason; sfx('season'); }
@@ -57,7 +58,7 @@ export class Player {
     const sprint = input.down('sprint');
     let dir = (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0);
     if (this.lock > 0) { this.lock -= dt; dir = this.lockDir; }
-    const maxV = sprint ? 370 : 240;
+    const maxV = (sprint ? 370 : 240) * (this.star > 0 ? 1.25 : 1);
     // Frozen water and ice floes are slippery: slow to start, slow to stop.
     const ice = this.onGround && world.onIce?.(this);
     if (dir) {

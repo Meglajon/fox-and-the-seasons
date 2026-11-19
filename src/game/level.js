@@ -2,7 +2,7 @@
 // lives, checkpoints, the bell, bosses and the HUD.
 import { engine, W, H, setScene, transition, pushOverlay, toast, shake } from '../core/engine.js';
 import { input } from '../core/input.js';
-import { state, saveGame } from '../core/state.js';
+import { state, saveGame, START_LIVES } from '../core/state.js';
 import { clamp, hash2, overlap, dist } from '../core/util.js';
 import { T, drawTile } from '../art/tiles.js';
 import { makePal, SEASON_COLOR } from '../art/palettes.js';
@@ -18,7 +18,8 @@ import { Player } from './player.js';
 import {
   Critter, Acorn, PopAcorn, Berry, GoldenSeed, StonePickup, LetterPickup, Lantern, Bell, Mushroom, Soil, Sign, NPC, Pumpkin,
 } from './entities.js';
-import { Vent, Pike, Scarecrow } from './bosses.js';
+import { Vent, Pike, Scarecrow, Burrow, Starbloom } from './bosses.js';
+import { RAINBOW } from '../art/critters2.js';
 import { DISTRICTS, npcLines } from './story.js';
 import { addAcorns, addLife, checkSeedRewards, unlockOutfit, grantFurniture } from './progress.js';
 import { Dialogue, Choice, LetterCard, Card, ListMenu, fmt } from '../ui/ui.js';
@@ -38,13 +39,15 @@ const TRACK_FOR_STONE = { '1-1': 'bloom', '2-1': 'pond', '3-1': 'orchard' };
 export const SPRING_LETTER = DISTRICTS[1].letter;
 
 export class LevelScene {
-  constructor(id) {
+  // opts: { spawn: {x, y}, cpIndex, star, returnTo } — used when going in and out of secret burrows.
+  constructor(id, opts = {}) {
     this.id = id;
+    this.opts = opts;
     this.info = LEVEL_INFO[id];
     this.data = getLevel(id);
     this.district = DISTRICTS[this.info.district];
-    this.cpIndex = -1; this.deathsAtCp = 0; this.lastDeathCp = -2;
-    this.introDone = false; this.talks = {};
+    this.cpIndex = opts.cpIndex ?? -1; this.deathsAtCp = 0; this.lastDeathCp = -2;
+    this.introDone = !!opts.spawn; this.talks = {};
   }
 
   enter() {
@@ -96,6 +99,9 @@ export class LevelScene {
             if (!state.data.stones[season]) this.ents.push(new StonePickup(x, y, season));
             break;
           }
+          case 'H': this.ents.push(new Burrow(x, y, false)); break;
+          case 'X': this.ents.push(new Burrow(x, y, true)); break;
+          case '*': this.ents.push(new Starbloom(x, y)); break;
           case 's': { const s = new Sign(x, y, d.signs[`${x},${y}`] || ''); this.signs.push(s); this.ents.push(s); break; }
           default: break;
         }
@@ -112,11 +118,13 @@ export class LevelScene {
       for (const ll of this.lanterns) if (ll.idx <= this.cpIndex) ll.lit = true;
     }
     if (this.skipTo) { px = this.skipTo; this.skipTo = null; }
+    if (this.opts.spawn && !this.spawned) { px = this.opts.spawn.x; py = this.opts.spawn.y; this.spawned = true; }
     this.player = new Player(px, py);
     const own = this.district?.season;
     if (own && state.data.stones[own]) this.player.setSeason(own, true);
     else if (this.info.district >= 1 && state.data.stones.spring) this.player.setSeason('spring', true);
     this.canSeason = true;
+    if (this.opts.star && !this.starGiven) { this.player.star = this.opts.star; this.starGiven = true; }
 
     const theme = this.data.theme;
     const awake = theme === 'square' ? false : !!state.data.cleared[this.district?.boss];
@@ -344,7 +352,7 @@ export class LevelScene {
   // ---------- damage, lives ----------
   hurt(srcX) {
     const p = this.player;
-    if (this.godMode || p.inv > 0 || p.dead || this.state !== 'play') return;
+    if (this.godMode || p.star > 0 || p.inv > 0 || p.dead || this.state !== 'play') return;
     if (p.carry) this.dropCarry();
     p.climb = null;
     const dir = srcX != null ? Math.sign(p.cx - srcX) || -p.facing : -p.facing;
@@ -394,7 +402,7 @@ export class LevelScene {
   gameOver() {
     stopMusic(1);
     pushOverlay(new Dialogue([{ who: null, text: 'Out of lives! {name} heads home for a nap...' }], () => {
-      state.data.lives = 5;
+      state.data.lives = START_LIVES;
       saveGame();
       transition(() => setScene(new DenScene({ wake: true })));
     }));
@@ -439,6 +447,33 @@ export class LevelScene {
     for (const c of this.critters) if (!c.asleep) c.sleep(this);
     this.letterT = 0.9;
   }
+  // ---------- secret burrows ----------
+  useBurrow(b) {
+    if (b.exit) { this.returnToParent(false); return; }
+    const sid = this.data.secret;
+    if (!sid) return;
+    sfx('door');
+    const returnTo = { id: this.id, x: b.cx, y: b.base, cpIndex: this.cpIndex };
+    transition(() => setScene(new LevelScene(sid, { returnTo })), b.cx - this.camX, b.base - this.camY - 20);
+  }
+  returnToParent(withStar) {
+    const r = this.opts.returnTo;
+    if (!r || this.leaving) return;
+    this.leaving = true;
+    sfx('door');
+    transition(() => setScene(new LevelScene(r.id, { spawn: { x: r.x, y: r.y }, cpIndex: r.cpIndex, star: withStar ? 10 : 0 })));
+  }
+  gotStarbloom(x, y) {
+    const d = state.data;
+    d.secrets = d.secrets || {};
+    d.secrets[this.opts.returnTo?.id || this.id] = true;
+    saveGame();
+    sfx('oneup'); this.burst(x, y, 'spark', 24);
+    toast('Starbloom! Invincible for 10 seconds outside');
+    this.player.frozen = true;
+    this.leaveT = 1.3;
+  }
+
   gotLetter() {
     this.player.frozen = true;
     sfx('unlock');
@@ -537,6 +572,10 @@ export class LevelScene {
     this.floaters = this.floaters.filter((f) => f.t < 1.2);
     for (const [k, v] of this.bumps) { if (v - dt <= 0) this.bumps.delete(k); else this.bumps.set(k, v - dt); }
 
+    // Starbloom: speed the music up while it lasts, sparkle, and head back out of a secret room after grabbing it.
+    setTempo(p.star > 0 ? 1.18 : this.data.autoscroll ? 1.1 : 1);
+    if (p.star > 0 && Math.random() < dt * 30) this.parts.push({ type: 'rainbow', x: p.cx + (Math.random() - 0.5) * 40, y: p.cy + (Math.random() - 0.5) * 40, vx: 0, vy: -40, life: 0.6, max: 0.6, rot: Math.random() * 6, c: RAINBOW[Math.floor(Math.random() * 5)] });
+    if (this.leaveT > 0) { this.leaveT -= dt; if (this.leaveT <= 0) this.returnToParent(true); }
     if (this.letterT > 0) {
       this.letterT -= dt;
       if (this.letterT <= 0) this.ents.push(new LetterPickup(this.boss.x, this.boss.top - 20));
@@ -577,6 +616,7 @@ export class LevelScene {
         else { e.mode = 'thrown'; e.vx = (p.cx < e.cx ? 1 : -1) * (e.frozen ? 520 : 430); e.vy = -120; e.bounces = 0; e.kickCool = 0.4; sfx('kick'); }
         continue;
       }
+      if (p.star > 0) { e.sleep(this); sfx('bop'); this.burst(e.cx, e.y, 'spark', 10); continue; }
       const prevBottom = p.bottom - p.vy * dt;
       if (p.vy > 0 && prevBottom <= e.y + 16) {
         e.sleep(this); p.y = e.y - p.h; p.bounce(560); sfx('bop');
@@ -684,6 +724,12 @@ export class LevelScene {
     const pose = p.pose();
     const blink = p.inv > 0 && Math.floor(p.inv * 14) % 2 === 0;
     if (!blink) {
+      if (p.star > 0 && (p.star > 2 || Math.floor(p.star * 8) % 2 === 0)) {
+        ctx.save(); ctx.globalAlpha = 0.45;
+        ctx.fillStyle = RAINBOW[Math.floor(this.time * 10) % 5];
+        ctx.beginPath(); ctx.arc(p.cx - this.camX, p.cy - this.camY, 34 + Math.sin(this.time * 12) * 4, 0, 7); ctx.fill();
+        ctx.restore();
+      }
       if (p.gliding) drawLeafGlider(ctx, p.cx - this.camX, p.y - this.camY - 22, this.time, engine.boil);
       const scarf = p.charm > 0 ? '#b9b0a3' : SEASON_COLOR[p.season || 'none'];
       drawFox(ctx, p.cx - this.camX, p.bottom - this.camY + 1, {
@@ -722,6 +768,7 @@ export class LevelScene {
     else if (q.type === 'snow') { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill(); }
     else if (q.type === 'splash') { ctx.fillStyle = '#cfeafa'; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.fill(); }
     else if (q.type === 'bubble') { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.stroke(); }
+    else if (q.type === 'rainbow') { ctx.fillStyle = q.c; ctx.translate(x, y); ctx.rotate(q.rot + q.life * 8); ctx.fillRect(-3, -3, 6, 6); }
     else if (q.type === 'z') drawZ(ctx, x, y, a);
     ctx.restore();
   }
@@ -729,10 +776,10 @@ export class LevelScene {
   drawHUD(ctx) {
     const d = state.data, b = engine.boil;
     const lives = d.lives;
-    const slots = Math.max(5, Math.min(9, lives));
-    panel(ctx, 12, 10, 28 + slots * 26, 50, { seed: 51, r: 14, boil: 0 });
-    for (let i = 0; i < slots; i++) drawPaw(ctx, 32 + i * 26, 38, 1.05, i < lives, b);
-    if (state.settings.infiniteLives) text(ctx, '∞', 40 + slots * 26, 44, { size: 26 });
+    const slots = Math.max(START_LIVES, Math.min(15, lives));
+    panel(ctx, 12, 10, 26 + slots * 21, 50, { seed: 51, r: 14, boil: 0 });
+    for (let i = 0; i < slots; i++) drawPaw(ctx, 30 + i * 21, 38, 0.88, i < lives, b);
+    if (state.settings.infiniteLives) text(ctx, '∞', 36 + slots * 21, 44, { size: 26 });
     panel(ctx, 12, 66, 120, 42, { seed: 52, r: 12, boil: 0 });
     drawAcorn(ctx, 36, 88, 1.15, b);
     text(ctx, '× ' + d.acorns, 54, 96, { size: 24 });

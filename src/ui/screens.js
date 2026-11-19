@@ -7,7 +7,7 @@ import { sfx } from '../audio/sfx.js';
 import { ListMenu, Choice, NameEntry, dim } from './ui.js';
 import { panel, text } from '../art/ink.js';
 import { drawFox, FURS, FUR_ORDER, SCARVES, HATS, EXTRAS } from '../art/fox.js';
-import { FURN } from '../art/furniture.js';
+import { FURN, SETS, WALLPAPERS, FLOORS } from '../art/furniture.js';
 import { SEASON_COLOR } from '../art/palettes.js';
 import { grantFurniture, unlockOutfit, SEED_FUR_HOW } from '../game/progress.js';
 import { applyTouch } from '../core/touch.js';
@@ -188,22 +188,54 @@ export class Wardrobe extends ListMenu {
   }
 }
 
-// ---------------- catalogue ----------------
+// ---------------- catalogue (shop) ----------------
+// Sections: each furniture set, wall decor, rugs, wallpaper, flooring and outfits.
+function shopItems(section) {
+  const d = state.data, u = d.unlocked;
+  const out = [];
+  if (section === 'wallpaper') {
+    for (const [id, w] of Object.entries(WALLPAPERS)) if (w.price && !u.wallpaper.includes(id)) out.push({ kind: 'wallpaper', id, name: w.name, price: w.price, tag: 'Wallpaper' });
+  } else if (section === 'floor') {
+    for (const [id, f] of Object.entries(FLOORS)) if (f.price && !u.floor.includes(id)) out.push({ kind: 'floor', id, name: f.name, price: f.price, tag: 'Flooring' });
+  } else if (section === 'outfits') {
+    for (const sc of SCARVES) if (sc.price && !u.scarf.includes(sc.id)) out.push({ kind: 'scarf', id: sc.id, name: `${sc.name} scarf`, price: sc.price, tag: 'Outfit' });
+    for (const h of HATS) if (h.price && !u.hat.includes(h.id)) out.push({ kind: 'hat', id: h.id, name: h.name, price: h.price, tag: 'Outfit' });
+    for (const e of EXTRAS) if (!u.extras.includes(e.id)) out.push({ kind: 'extras', id: e.id, name: e.name, price: e.price, tag: 'Outfit' });
+  } else {
+    for (const [id, f] of Object.entries(FURN)) if (f.set === section && f.price && !d.furniture.owned.includes(id)) out.push({ kind: 'furn', id, name: f.name, price: f.price, tag: f.layer === 'wall' ? 'Wall decor' : f.layer === 'rug' ? 'Rug' : 'Furniture' });
+  }
+  return out;
+}
+
 export class Catalogue extends ListMenu {
-  constructor() { super({ title: 'Catalogue', items: [], w: 560, x: W / 2 - 280, y: 40 }); this.build(); }
+  constructor() {
+    const sections = [...SETS, ['wallpaper', 'Wallpaper'], ['floor', 'Flooring'], ['outfits', 'Outfits']];
+    super({
+      title: 'Catalogue', w: 520, x: W / 2 - 260, y: 40,
+      items: sections.map(([id, name]) => ({
+        label: name,
+        value: () => { const n = shopItems(id).length; return n ? `${n} to buy` : 'All bought'; },
+        select: () => pushOverlay(new ShopList(id, name)),
+      })),
+      note: 'Everything costs acorns. New furniture goes straight into your den.',
+    });
+  }
+  render(ctx) {
+    super.render(ctx);
+    text(ctx, `${state.data.acorns} acorns`, this.x + this.w - 24, this.y + 40, { size: 20, align: 'right', color: '#7a6656', ui: true });
+  }
+}
+
+class ShopList extends ListMenu {
+  constructor(section, name) { super({ title: name, items: [], w: 560, x: W / 2 - 280, y: 40 }); this.section = section; this.build(); }
   build() {
-    const d = state.data, u = d.unlocked;
-    const list = [];
-    for (const [id, f] of Object.entries(FURN)) if (f.price && !d.furniture.owned.includes(id)) list.push({ kind: 'furn', id, name: f.name, price: f.price, tag: 'Furniture' });
-    for (const s of SCARVES) if (s.price && !u.scarf.includes(s.id)) list.push({ kind: 'scarf', id: s.id, name: `${s.name} scarf`, price: s.price, tag: 'Outfit' });
-    for (const h of HATS) if (h.price && !u.hat.includes(h.id)) list.push({ kind: 'hat', id: h.id, name: h.name, price: h.price, tag: 'Outfit' });
-    for (const e of EXTRAS) if (!u.extras.includes(e.id)) list.push({ kind: 'extras', id: e.id, name: e.name, price: e.price, tag: 'Outfit' });
-    this.items = list.map((it) => ({
+    const d = state.data;
+    this.items = shopItems(this.section).map((it) => ({
       label: it.name, value: () => `${it.price} acorns`, disabled: () => d.acorns < it.price,
       hint: () => (d.acorns < it.price ? `You need ${it.price - d.acorns} more acorns` : `${it.tag}. Press ${'{jump}'} to buy.`),
       select: () => this.buy(it),
     }));
-    if (!this.items.length) this.note = 'You have bought everything. What a cozy den!';
+    this.note = this.items.length ? null : 'Sold out: you have everything in this section!';
     this.sel = Math.min(this.sel, Math.max(0, this.items.length - 1));
   }
   buy(it) {
@@ -212,6 +244,10 @@ export class Catalogue extends ListMenu {
     if (it.kind === 'furn') {
       const where = grantFurniture(it.id);
       toast(where === 'placed' ? `${it.name} is in your den!` : `${it.name} is in the storage chest`);
+    } else if (it.kind === 'wallpaper' || it.kind === 'floor') {
+      d.unlocked[it.kind].push(it.id);
+      d.den[it.kind] = it.id;
+      toast(`${it.name} is up! Change it any time at the catalogue.`);
     } else {
       unlockOutfit(it.kind, it.id);
       toast(`${it.name} added to the wardrobe`);
@@ -222,7 +258,7 @@ export class Catalogue extends ListMenu {
   }
   render(ctx) {
     super.render(ctx);
-    text(ctx, `You have ${state.data.acorns} acorns`, this.x + this.w - 24, this.y + 40, { size: 20, align: 'right', color: '#7a6656', ui: true });
+    text(ctx, `${state.data.acorns} acorns`, this.x + this.w - 24, this.y + 40, { size: 20, align: 'right', color: '#7a6656', ui: true });
   }
 }
 

@@ -25,7 +25,7 @@ const sideWidth = () => Math.round(Math.max((innerWidth - (innerHeight * 16) / 9
 
 const BUTTONS = [
   { id: 'btnA', label: 'A', sub: 'jump', acts: ['jump'] },
-  { id: 'btnB', label: 'B', sub: 'run', acts: ['sprint'] },
+  { id: 'btnB', label: 'B', sub: 'run', acts: ['sprint'], toggle: true },
   { id: 'btnUse', label: '↑', sub: 'use', acts: ['up'] },
   { id: 'btnSeason', label: '⟳', sub: 'season', acts: ['next', 'flip'] },
   { id: 'btnPause', label: 'II', sub: '', acts: ['pause', 'back'] },
@@ -62,6 +62,21 @@ function makeButton(b) {
   el.className = 'tc btn';
   el.id = b.id;
   el.innerHTML = `<span class="lbl">${b.label}</span>${b.sub ? `<span class="sub">${b.sub}</span>` : ''}`;
+  if (b.toggle) {
+    // Run is a toggle on touch screens: tap once to keep running, tap again to walk.
+    // Each tap is still a press, so picking up / putting down furniture works the same.
+    releasers[b.id] = () => {};
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const on = !held[b.id];
+      if (on) held[b.id] = b.acts; else delete held[b.id];
+      latch(b.acts);
+      el.classList.toggle('on', on);
+      el.querySelector('.sub').textContent = on ? 'run ON' : b.sub;
+      recompute();
+    });
+    return el;
+  }
   releasers[b.id] = () => { delete held[b.id]; el.classList.remove('on'); recompute(); };
   el.addEventListener('pointerdown', (e) => {
     e.preventDefault();

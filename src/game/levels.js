@@ -84,6 +84,7 @@ function l02() {
   b.sign(54, 4, 'Jump into a wall, then press {jump} again to wall-jump. Bounce between the walls to climb!');
   b.fill(57, 57, 6, 11, 'r');
   b.put(57, 12, 'G');
+  b.plat(58, 13, 3); b.put(59, 14, 'H');
   b.roof(61, 76, 11);
   b.acorns(64, 12, 4);
   b.put(67, 11, 'g'); b.put(72, 11, 'g');
@@ -104,7 +105,7 @@ function l02() {
   b.put(136, 4, 'g'); b.put(141, 4, 'g');
   b.put(150, 4, 'E');
   b.fill(159, 159, 4, 14, 'r');
-  return b.done({ id: '0-2', name: 'Rooftop Ramble', theme: 'square' });
+  return b.done({ id: '0-2', name: 'Rooftop Ramble', theme: 'square', secret: 'S0' });
 }
 
 function l11() {
@@ -159,7 +160,7 @@ function l12() {
   b.ground(19, 40);
   b.put(25, 2, 'g'); b.put(28, 2, 'g');
   b.put(31, 2, 'v');
-  b.plat(32, 8, 6); b.acorns(32, 9, 4); b.put(37, 9, 'G');
+  b.plat(32, 8, 6); b.put(33, 9, 'H'); b.acorns(34, 9, 3); b.put(37, 9, 'G');
   b.put(35, 2, 'd');
   b.ground(43, 43); b.put(43, 2, 'f');
   b.ground(47, 60);
@@ -188,7 +189,7 @@ function l12() {
   b.arc(155, 5, 5);
   b.put(168, 2, 'E');
   b.fill(179, 179, 2, 12, 'r');
-  return b.done({ id: '1-2', name: 'Bumble Bower', theme: 'bloom' });
+  return b.done({ id: '1-2', name: 'Bumble Bower', theme: 'bloom', secret: 'S1' });
 }
 
 function l13() {
@@ -324,7 +325,7 @@ function l22() {
   b.water(46, 55);
   b.ground(56, 70); b.put(58, 2, 'C'); b.put(64, 2, 'h'); b.acorns(60, 5, 3);
   b.water(71, 90);
-  b.ground(78, 79); b.put(78, 2, 'h'); b.plat(79, 5, 2); b.put(80, 6, 'G');
+  b.ground(78, 79); b.put(78, 2, 'h'); b.plat(79, 5, 2); b.put(79, 6, 'H'); b.put(80, 6, 'G');
   b.ground(85, 85);
   b.ground(91, 110); b.put(93, 2, 'C'); b.put(98, 2, 'e'); b.put(102, 2, 'e'); b.put(105, 5, 'z');
   b.put(108, 2, '^'); b.put(108, 8, 'G');
@@ -337,7 +338,7 @@ function l22() {
   b.fill(165, 165, 2, 9, 'w');
   b.put(172, 2, 'E');
   b.fill(179, 179, 2, 12, 'r');
-  return b.done({ id: '2-2', name: 'Frozen Canals', theme: 'pond' });
+  return b.done({ id: '2-2', name: 'Frozen Canals', theme: 'pond', secret: 'S2' });
 }
 
 function l23() {
@@ -453,13 +454,13 @@ function l32() {
   b.ground(113, 140);
   b.plat(120, 4, 3); b.plat(124, 7, 4); b.put(126, 8, 'G');
   b.put(130, 5, 'L');
-  b.put(135, 2, 'U'); b.plat(136, 10, 6); b.acorns(136, 11, 6);
+  b.put(135, 2, 'U'); b.plat(136, 10, 6); b.acorns(136, 11, 4); b.put(141, 11, 'H');
   b.put(148, 7, 'G'); b.arc(143, 8, 5);
   b.ground(156, 179);
   b.put(162, 2, 'g');
   b.put(170, 2, 'E');
   b.fill(179, 179, 2, 12, 'r');
-  return b.done({ id: '3-2', name: 'Windy Rows', theme: 'orchard' });
+  return b.done({ id: '3-2', name: 'Windy Rows', theme: 'orchard', secret: 'S3' });
 }
 
 function l33() {
@@ -527,10 +528,56 @@ function l3b() {
   return b.done({ id: '3-B', name: 'The Prize Scarecrow', theme: 'orchardboss', boss: 'scarecrow' });
 }
 
+
+// ======================= Secret burrows (one-screen puzzles with a Starbloom) =======================
+// X = the way back out, * = Starbloom (invincible for 10 seconds back in the level)
+function room(theme) {
+  const b = new B(20, 12);
+  b.fill(0, 0, 2, 11, 'r'); b.fill(19, 19, 2, 11, 'r');
+  b.put(2, 2, 'X'); b.put(4, 2, 'P');
+  return b;
+}
+function s0() {
+  // Rooftop Ramble: wall-jump up a narrow chimney to the top of the stack.
+  const b = room(); b.ground(0, 19);
+  b.acorns(5, 5, 3); b.put(8, 5, '?');
+  b.fill(11, 11, 4, 10, 'r'); b.fill(14, 18, 0, 7, '#');
+  b.put(16, 8, '*'); b.acorns(15, 10, 3);
+  return b.done({ id: 'S0', name: 'Secret: Chimney Cubby', theme: 'square' });
+}
+function s1() {
+  // Bumble Bower: a chain of bounce-flowers over a floor of thorns (Spring).
+  const b = room(); b.ground(0, 18);
+  b.fill(7, 16, 2, 2, 'b');
+  b.put(6, 2, 'f'); b.put(11, 2, 'f'); b.put(16, 2, 'f');
+  b.fill(17, 18, 0, 5, '#'); b.put(18, 6, '*');
+  b.arc(8, 7, 7);
+  return b.done({ id: 'S1', name: 'Secret: Petal Hollow', theme: 'bloom' });
+}
+function s2() {
+  // Frozen Canals: freeze the pool to stand in the shaft, then wall-jump up the frozen waterfall (Winter).
+  const b = room(); b.ground(0, 4); b.water(5, 16);
+  b.fill(12, 12, 4, 9, 'r'); b.fill(15, 16, 2, 9, 'w');
+  b.fill(17, 18, 0, 8, '#'); b.put(18, 9, '*');
+  b.acorns(6, 4, 4);
+  return b.done({ id: 'S2', name: 'Secret: Icy Grotto', theme: 'pond' });
+}
+function s3() {
+  // Windy Rows: leaf piles, then a gust vent and a glide to the high ledge (Autumn).
+  const b = room(); b.ground(0, 4);
+  b.fill(5, 8, 0, 1, 'p');
+  b.ground(10, 10); b.put(10, 2, 'U');
+  b.plat(13, 9, 4); b.put(15, 10, '*');
+  b.ground(18, 19);
+  b.arc(12, 6, 5);
+  return b.done({ id: 'S3', name: 'Secret: Gusty Burrow', theme: 'orchard' });
+}
+
 const BUILDERS = {
   '0-1': l01, '0-2': l02, '1-1': l11, '1-2': l12, '1-3': l13, '1-4': l14, '1-B': l1b,
   '2-1': l21, '2-2': l22, '2-3': l23, '2-4': l24, '2-B': l2b,
   '3-1': l31, '3-2': l32, '3-3': l33, '3-4': l34, '3-B': l3b,
+  S0: s0, S1: s1, S2: s2, S3: s3,
 };
 export const LEVEL_ORDER = ['0-1', '0-2', '1-1', '1-2', '1-3', '1-4', '1-B', '2-1', '2-2', '2-3', '2-4', '2-B', '3-1', '3-2', '3-3', '3-4', '3-B'];
 export const LEVEL_INFO = {
@@ -551,6 +598,10 @@ export const LEVEL_INFO = {
   '3-3': { name: 'Cider Press', district: 3, music: 'orchard', seeds: 3 },
   '3-4': { name: 'Leaf Storm', district: 3, music: 'orchard', seeds: 3 },
   '3-B': { name: 'The Prize Scarecrow', district: 3, music: 'boss', seeds: 0 },
+  S0: { name: 'Secret: Chimney Cubby', district: 0, music: 'map', seeds: 0, secret: true },
+  S1: { name: 'Secret: Petal Hollow', district: 1, music: 'bloom', seeds: 0, secret: true },
+  S2: { name: 'Secret: Icy Grotto', district: 2, music: 'pond', seeds: 0, secret: true },
+  S3: { name: 'Secret: Gusty Burrow', district: 3, music: 'orchard', seeds: 0, secret: true },
 };
 const built = {};
 export function getLevel(id) { return built[id] || (built[id] = BUILDERS[id]()); }

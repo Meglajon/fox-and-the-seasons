@@ -24,6 +24,8 @@ export function saveSettings() {
   state.onSettings.forEach((f) => f());
 }
 
+export const START_LIVES = 10;
+
 export const START_FURNITURE = [
   { id: 'bed', slot: 4, flip: false },
   { id: 'lamp', slot: 6, flip: false },
@@ -35,11 +37,12 @@ export const START_FURNITURE = [
 export function newData(name) {
   return {
     name: name || 'Fennel',
-    lives: 5, acorns: 0, acornLife: 0,
+    lives: START_LIVES, livesBoost: true, acorns: 0, acornLife: 0,
     seeds: {}, cleared: {},
     stones: { spring: false, winter: false, autumn: false, summer: false },
     outfit: { fur: 'red', scarf: 'plain', hat: null, glasses: false, satchel: false, ribbon: false, cheeks: false },
-    unlocked: { fur: ['red', 'sand'], scarf: ['plain'], hat: [], extras: [] },
+    unlocked: { fur: ['red', 'sand'], scarf: ['plain'], hat: [], extras: [], wallpaper: ['stripes'], floor: ['planks'] },
+    den: { wallpaper: 'stripes', floor: 'planks' }, secrets: {},
     furniture: { placed: START_FURNITURE.map((f) => ({ ...f })), stored: [], owned: START_FURNITURE.map((f) => f.id) },
     rewards: [], letters: [], tracks: ['title', 'den', 'map'], record: 'den',
     introDone: false, mapNode: 0, time: 0,
@@ -50,6 +53,15 @@ export function loadSlot(i) {
   state.slot = i;
   const d = read(KEY + '.slot' + i);
   state.data = d ? { ...newData(d.name), ...d } : null;
+  // Older saves started with 5 lives: give them the 5 extra lives once.
+  // Saves from before the decorating update: default wallpaper and flooring.
+  if (state.data) {
+    const u = state.data.unlocked;
+    u.wallpaper = u.wallpaper || ['stripes']; u.floor = u.floor || ['planks'];
+    state.data.den = state.data.den || { wallpaper: 'stripes', floor: 'planks' };
+    state.data.secrets = state.data.secrets || {};
+  }
+  if (state.data && !d.livesBoost) { state.data.lives = Math.min(15, state.data.lives + 5); state.data.livesBoost = true; }
   return state.data;
 }
 export function saveGame() {

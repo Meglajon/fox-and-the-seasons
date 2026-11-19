@@ -3,7 +3,7 @@ import { state, countSeeds } from '../core/state.js';
 import { FURN, SLOT } from '../art/furniture.js';
 import { FURS } from '../art/fox.js';
 
-export const MAX_LIVES = 9;
+export const MAX_LIVES = 15;
 const SEED_REWARDS = [
   [5, 'furn', 'fern'], [6, 'fur', 'arctic'], [10, 'furn', 'paint_fox'],
   [12, 'fur', 'silver'], [15, 'furn', 'paint_bloom'], [18, 'fur', 'midnight'],
@@ -26,30 +26,44 @@ export function addLife() {
   return true;
 }
 
-// Reserved den slots per layer (fixed objects live there).
+// The Den is a grid: 20 slots across; floor items and rugs have 3 depths (0 back, 1 middle, 2 front),
+// wall items have 2 heights (0 high, 1 low). Some cells are taken by the fixed door, wardrobe,
+// fireplace, window, cabinet, chest and catalogue.
 export const RESERVED = {
-  floor: [0, 1, 2, 3, 9, 10, 16, 17, 18, 19],
-  wall: [0, 1, 2, 3, 9, 10, 13, 14],
-  rug: [0, 1],
+  floor: [[0, 1, 2, 3, 9, 10, 16, 17, 18, 19], [0, 1], [0, 1]],
+  rug: [[0, 1], [0, 1], [0, 1]],
+  wall: [[9, 10, 13, 14], [0, 1, 2, 3, 9, 10, 13, 14, 16, 17]],
 };
-export function slotFree(layer, start, w, ignore) {
+export const rowsFor = (layer) => (layer === 'wall' ? [0, 1] : [0, 1, 2]);
+export function slotFree(layer, row, start, w, ignore) {
   if (start < 0 || start + w > 20) return false;
-  const used = new Set(RESERVED[layer]);
+  const used = new Set(RESERVED[layer][row] || []);
   for (const p of state.data.furniture.placed) {
-    if (p === ignore || FURN[p.id].layer !== layer) continue;
+    if (p === ignore || FURN[p.id].layer !== layer || (p.row || 0) !== row) continue;
     for (let i = 0; i < FURN[p.id].w; i++) used.add(p.slot + i);
   }
   for (let i = 0; i < w; i++) if (used.has(start + i)) return false;
   return true;
 }
+// First free spot for an item, trying near `nearSlot` first (back row before front).
+export function findSpot(id, nearSlot) {
+  const def = FURN[id];
+  for (const row of rowsFor(def.layer)) {
+    if (nearSlot != null) {
+      const s = Math.max(0, Math.min(20 - def.w, nearSlot - Math.floor((def.w - 1) / 2)));
+      if (slotFree(def.layer, row, s, def.w)) return { row, slot: s };
+    }
+  }
+  if (nearSlot != null) return null;
+  for (const row of rowsFor(def.layer)) for (let s = 0; s <= 20 - def.w; s++) if (slotFree(def.layer, row, s, def.w)) return { row, slot: s };
+  return null;
+}
 export function grantFurniture(id) {
   const f = state.data.furniture;
   if (f.owned.includes(id)) return null;
   f.owned.push(id);
-  const def = FURN[id];
-  for (let s = 0; s <= 20 - def.w; s++) {
-    if (slotFree(def.layer, s, def.w)) { f.placed.push({ id, slot: s, flip: false }); return 'placed'; }
-  }
+  const spot = findSpot(id);
+  if (spot) { f.placed.push({ id, slot: spot.slot, row: spot.row, flip: false }); return 'placed'; }
   f.stored.push(id);
   return 'stored';
 }

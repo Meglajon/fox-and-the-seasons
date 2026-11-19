@@ -188,12 +188,13 @@ export class MapScene {
       const s = d.seeds[n.id] || [];
       for (let k = 0; k < 3; k++) drawSeed(ctx, W / 2 + 160 + k * 26, H - 64, { ghost: !s[k], boil: b, t: 0 });
     }
+    const secretNote = d.secrets?.[n.id] ? '  ★ Starbloom found' : '';
     const sub = n.id === 'den' ? 'Your home: furniture, wardrobe and settings' : n.locked ? 'Coming in the next build' : d.cleared[n.id] ? 'Cleared! Play again to find more golden seeds' : 'Not cleared yet';
-    text(ctx, `${sub}   ·   ${fmt('{jump}')} to enter`, W / 2, H - 28, { size: 18, align: 'center', color: '#7a6656', ui: true });
+    text(ctx, `${sub}${secretNote}   ·   ${fmt('{jump}')} to enter`, W / 2, H - 28, { size: 18, align: 'center', color: '#7a6656', ui: true });
 
     // lives + acorns (bottom right, clear of the regions at the top)
     panel(ctx, W - 226, H - 60, 214, 46, { seed: 121, r: 14 });
-    for (let k = 0; k < Math.max(5, d.lives); k++) drawPaw(ctx, W - 208 + k * 17, H - 35, 0.7, k < d.lives, b);
+    drawPaw(ctx, W - 202, H - 36, 0.95, true, b); text(ctx, '× ' + d.lives, W - 186, H - 28, { size: 22 });
     drawAcorn(ctx, W - 50, H - 40, 0.9, b); text(ctx, '' + d.acorns, W - 36, H - 30, { size: 20 });
     text(ctx, 'Foxhollows', 16, H - 16, { size: 34, color: shade('#b5503a', -0.1), outline: '#fffaf0' });
   }

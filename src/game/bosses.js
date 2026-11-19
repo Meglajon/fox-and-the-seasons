@@ -1,9 +1,12 @@
 // Millpond + Copperleaf objects: gust vents, Old Pike, the Prize Scarecrow and diving crows.
 import { T } from '../art/tiles.js';
-import { clamp } from '../core/util.js';
+import { clamp, overlap } from '../core/util.js';
 import { sfx } from '../audio/sfx.js';
 import { engine, shake } from '../core/engine.js';
-import { drawVent, drawPike, drawScarecrow, drawCrow, SCARE_H, SCARE_ARM_Y, SCARE_ARM_LEN } from '../art/critters2.js';
+import { drawVent, drawPike, drawScarecrow, drawCrow, drawBurrow, drawStarbloom, SCARE_H, SCARE_ARM_Y, SCARE_ARM_LEN } from '../art/critters2.js';
+import { input } from '../core/input.js';
+import { text } from '../art/ink.js';
+import { fmt } from '../ui/ui.js';
 
 // ---------------- gust vent (Autumn) ----------------
 export class Vent {
@@ -211,4 +214,27 @@ export class CrowDive {
     drawCrow(ctx, 0, 0, { t: this.t, boil: engine.boil, rot: Math.atan2(this.vy, Math.abs(this.vx)) * 0.5 });
     ctx.restore();
   }
+}
+
+// ---------------- secret burrows + the Starbloom ----------------
+
+// 'H' in a level: a hidden burrow leading to a secret puzzle room. 'X' in a secret room: the way back out.
+export class Burrow {
+  constructor(tx, row, exit) { this.cx = tx * T + T / 2; this.base = (row + 1) * T; this.exit = exit; this.t = 0; this.near = false; }
+  update(dt, L) {
+    this.t += dt;
+    const p = L.player;
+    this.near = !p.dead && Math.abs(p.cx - this.cx) < 30 && Math.abs(p.bottom - this.base) < 12 && p.onGround;
+    if (this.near && input.pressed('up') && L.state === 'play') L.useBurrow(this);
+  }
+  draw(ctx, L) {
+    drawBurrow(ctx, this.cx - L.camX, this.base - L.camY, { boil: engine.boil, t: this.t, glint: !this.exit });
+    if (this.near) text(ctx, fmt('{up}') + (this.exit ? ' Leave' : ' Peek inside'), this.cx - L.camX, this.base - L.camY - 58, { size: 18, align: 'center', outline: '#fffaf0', ui: true });
+  }
+}
+
+export class Starbloom {
+  constructor(tx, row) { this.x = tx * T + 6; this.y = row * T + 4; this.w = 36; this.h = 40; this.t = 0; this.dead = false; }
+  update(dt, L) { this.t += dt; if (overlap(this, L.player) && !L.player.dead) { this.dead = true; L.gotStarbloom(this.x + 18, this.y + 20); } }
+  draw(ctx, L) { drawStarbloom(ctx, this.x + 18 - L.camX, this.y + 22 - L.camY + Math.sin(this.t * 2.5) * 4, this.t, engine.boil); }
 }
