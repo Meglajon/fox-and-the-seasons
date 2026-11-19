@@ -68,13 +68,14 @@ You can switch them on or off in the settings cabinet (Display drawer → On-scr
   potting sheds. Cactus hedgehogs, shadow slugs, the *Heatwave* (hide from the sunbeams) and *the Sunlamp Moth*
 - **The Almanac Trail**: 20 tricky levels on their own map that need all four seasons, often within
   a few seconds of each other, including dark, auto-scrolling and heatwave stages
+- **The Hollow Oak** (finale): *Oak Roots* with every critter in the game, the *Heartwood Climb* straight
+  up the inside of the trunk, and *Wind the Clock*, where platforms come and go on the beat of the music
+  and the seasons turn once a bar. Then the ending, a year-long montage and the credits
 - **Secret burrows**: 5 hidden puzzle rooms, each holding a **Starbloom** that makes you invincible
   for 10 seconds back in the level
 - 10 lives, extra lives from acorns and berries, checkpoints, golden seeds and unlockables
-- 9 original music tracks plus sound effects
+- 10 original music tracks plus sound effects
 - On phones: on-screen controls, with the run button as a tap-on/tap-off toggle
-
-The Hollow Oak finale comes in the next build.
 
 ## Publish on GitHub Pages
 

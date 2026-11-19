@@ -7,7 +7,7 @@ import { shake } from '../core/engine.js';
 import { engine } from '../core/engine.js';
 import {
   drawGrub, drawSnap, drawBuzzer, drawPumpkin, drawJuniper, drawAcorn, drawSeed, drawBerry, drawStoneGem,
-  drawLantern, drawBell, drawSoil, drawFlower, drawVine, drawMushroom, drawSign, drawLetter, drawZ,
+  drawLantern, drawBell, drawSoil, drawFlower, drawVine, drawMushroom, drawSign, drawLetter, drawZ, drawThimble,
 } from '../art/critters.js';
 import { panel, wrap, text } from '../art/ink.js';
 import { fmt } from '../ui/ui.js';
@@ -188,7 +188,7 @@ export class NPC {
     if (near && !p.dead && (!this.talked || input.pressed('up'))) { this.talked = true; L.talk(this.who); }
   }
   draw(ctx, L) {
-    const draw = { juniper: drawJuniper, puddle: drawPuddle, rook: drawRook, basil: drawBasil }[this.who] || drawJuniper;
+    const draw = { juniper: drawJuniper, puddle: drawPuddle, rook: drawRook, basil: drawBasil, thimble: drawThimble }[this.who] || drawJuniper;
     draw(ctx, this.cx - L.camX, this.base - L.camY, { facing: this.facing, t: this.t, boil: engine.boil });
     if (this.near && this.talked) text(ctx, fmt('{up}') + ' Talk', this.cx - L.camX, this.base - L.camY - 112, { size: 18, align: 'center', ui: true });
   }

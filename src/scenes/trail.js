@@ -7,7 +7,7 @@ import { shape, line, ellipse, rrect, rngFor, dot, text, panel } from '../art/in
 import { drawFox } from '../art/fox.js';
 import { drawSeed, drawPaw, drawAcorn } from '../art/critters.js';
 import { SEASON_COLOR } from '../art/palettes.js';
-import { LEVEL_INFO, ALMANAC_ORDER } from '../game/levels.js';
+import { LEVEL_INFO, ALMANAC_ORDER, OAK_ORDER } from '../game/levels.js';
 import { LevelScene } from '../game/level.js';
 import { MapScene, NODES as MAIN_NODES } from './map.js';
 import { ListMenu, fmt } from '../ui/ui.js';
@@ -29,7 +29,9 @@ ALMANAC_ORDER.forEach((id, i) => {
   const x = band % 2 === 0 ? COLS[k] : COLS[4 - k];
   TRAIL_NODES.push({ id, x, y: BANDS[band].y + (k % 2 ? -14 : 12) });
 });
-TRAIL_NODES.push({ id: 'oak', x: 70, y: 70, label: 'The Hollow Oak', locked: true });
+// The Hollow Oak: three levels climbing into the great tree at the top left.
+const OAK_SPOTS = [[96, 128], [52, 104], [104, 70]];
+OAK_ORDER.forEach((id, i) => TRAIL_NODES.push({ id, x: OAK_SPOTS[i][0], y: OAK_SPOTS[i][1], oak: true }));
 
 export class TrailScene {
   constructor() { this.t = 0; this.moving = null; this.facing = 1; }
@@ -45,7 +47,6 @@ export class TrailScene {
     const d = state.data;
     if (i <= 1) return true;
     const n = TRAIL_NODES[i];
-    if (n.locked) return false;
     return !!d.cleared[TRAIL_NODES[i - 1].id];
   }
   update(dt) {
@@ -65,7 +66,7 @@ export class TrailScene {
     const back = input.pressed('left') || input.pressed('down');
     if (fwd && this.i < TRAIL_NODES.length - 1) {
       if (this.unlocked(this.i + 1)) this.go(this.i + 1);
-      else { sfx('deny'); toast(TRAIL_NODES[this.i + 1].locked ? 'The Hollow Oak opens in the next build!' : 'Clear this level first to open the path'); }
+      else { sfx('deny'); toast('Clear this level first to open the path'); }
     } else if (back && this.i > 0) this.go(this.i - 1);
     if (input.pressed('confirm')) this.enterNode();
   }
@@ -81,8 +82,7 @@ export class TrailScene {
       sfx('door');
       state.data.mapNode = MAIN_NODES.findIndex((m) => m.trail);
       transition(() => setScene(new MapScene()), n.x, n.y);
-    } else if (n.locked) { sfx('deny'); toast('The Hollow Oak opens in the next build!'); }
-    else { sfx('select'); transition(() => setScene(new LevelScene(n.id)), n.x, n.y); }
+    } else { sfx('select'); transition(() => setScene(new LevelScene(n.id)), n.x, n.y); }
   }
   openPause() {
     pushOverlay(new ListMenu({
@@ -112,9 +112,10 @@ export class TrailScene {
       text(ctx, band.name, bi === 1 ? 16 : W - 16, top + 22, { size: 18, color: shade(band.deco, -0.3), align: bi === 1 ? 'left' : 'right' });
     });
     // the Hollow Oak (top left)
-    line(ctx, [[70, 60], [72, 12]], { rng, stroke: '#6b4a30', lw: 10 });
-    shape(ctx, ellipse(72, 14, 50, 24, 16), { fill: '#6f8f5a', rng, lw: 2.2 });
-    shape(ctx, ellipse(70, 44, 8, 11, 10), { fill: '#3b2a26', rng, lw: 1.6, wash: false });
+    shape(ctx, [[22, 92], [34, 40], [30, 8], [118, 8], [112, 40], [124, 92]], { fill: '#7a5038', rng, lw: 2.4, step: 16 });
+    shape(ctx, ellipse(74, 4, 78, 26, 18), { fill: d.finished ? '#7cb05a' : '#6f8f5a', rng, lw: 2.2 });
+    shape(ctx, ellipse(74, 40, 15, 15, 14), { fill: d.finished ? '#f6e08a' : '#e8dcc4', rng, lw: 2 });
+    line(ctx, [[74, 40], [74 + Math.cos(this.t * (d.finished ? 2 : 0.05)) * 10, 40 + Math.sin(this.t * (d.finished ? 2 : 0.05)) * 10]], { rng, lw: 2 });
 
     // path
     for (let i = 0; i < TRAIL_NODES.length - 1; i++) {
@@ -135,7 +136,12 @@ export class TrailScene {
         shape(ctx, [[n.x - 22, n.y + 10], [n.x - 22, n.y - 8], [n.x, n.y - 28], [n.x + 22, n.y - 8], [n.x + 22, n.y + 10]], { fill: '#d98f6f', rng: nr, lw: 2.4 });
         return;
       }
-      if (n.id === 'oak') { shape(ctx, ellipse(n.x, n.y, 15, 13, 14), { fill: '#c9c1b4', rng: nr, lw: 2.4 }); text(ctx, '?', n.x, n.y + 7, { size: 20, align: 'center' }); return; }
+      if (n.oak) {
+        shape(ctx, ellipse(n.x, n.y, 17, 14, 14), { fill: done ? '#e2b34a' : open ? '#fff3d0' : '#d9cfbf', rng: nr, lw: 2.6 });
+        text(ctx, n.id, n.x, n.y + 6, { size: 15, align: 'center' });
+        if (d.seeds[n.id]?.filter(Boolean).length === 3) dot(ctx, n.x + 15, n.y - 12, 4.5, '#f5c542');
+        return;
+      }
       const band = BANDS[Math.floor((i - 1) / 5)];
       const col = done ? SEASON_COLOR[band.season] : open ? '#fff3d0' : '#d9cfbf';
       shape(ctx, ellipse(n.x, n.y, 17, 14, 14), { fill: col, rng: nr, lw: 2.6 });
@@ -155,7 +161,7 @@ export class TrailScene {
       const s = d.seeds[n.id] || [];
       for (let k = 0; k < 3; k++) drawSeed(ctx, W / 2 + 175 + k * 24, H - 64, { ghost: !s[k], boil: b, t: 0 });
     }
-    const sub = n.id === 'back' ? 'Return to the map of Foxhollows' : n.locked ? 'Thimble is waiting... (coming in the next build)' : d.cleared[n.id] ? 'Cleared! Play again for golden seeds' : 'Not cleared yet';
+    const sub = n.id === 'back' ? 'Return to the map of Foxhollows' : d.cleared[n.id] ? 'Cleared! Play again for golden seeds' : n.id === 'O-3' ? 'Thimble is waiting at the top...' : 'Not cleared yet';
     text(ctx, `${sub}   ·   ${fmt('{jump}')} to enter`, W / 2, H - 28, { size: 18, align: 'center', color: '#7a6656', ui: true });
     panel(ctx, W - 226, H - 60, 214, 46, { seed: 221, r: 14 });
     drawPaw(ctx, W - 202, H - 36, 0.95, true, b); text(ctx, '× ' + d.lives, W - 186, H - 28, { size: 22 });

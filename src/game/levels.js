@@ -854,6 +854,7 @@ function trail(id, name, pieces, meta = {}) {
   b.arc(x + 2, 5, 5);
   b.put(x + 10, 2, 'E');
   b.fill(w - 1, w - 1, 2, 14, 'r');
+  meta.decorate?.(b, at);
   return b.done({ id, name, theme: 'almanac', pieces: at, ...meta });
 }
 
@@ -901,12 +902,109 @@ for (const [id, name, pieces, meta] of TRAIL) BUILDERS_TRAIL[id] = () => {
 export const ALMANAC_ORDER = TRAIL.map((t) => t[0]);
 export const ALMANAC_INFO = Object.fromEntries(TRAIL.map(([id, name]) => [id, { name, district: 5, music: 'almanac', seeds: 3 }]));
 
+// ======================= The Hollow Oak (finale) =======================
+// T=Thimble  Q=clock gear  W=the Season Clock  1/2=tick/tock beat blocks  5-8=season blocks (spring, summer, autumn, winter)
+function o1() {
+  // Oak Roots: every critter Fennel has met, waiting among the roots, with every season mixed in.
+  return trail('O-1', 'Oak Roots', [['flowerwall'], ['quickmix'], ['falls'], ['cactustunnel'], ['pilevent'], ['iceonice'], ['thornflower'], ['meltglide'], ['mudflower'], ['ventglide', { n: 12 }]], {
+    theme: 'oakroots', fade: 0.25, critters: ['g', 'd', 'e', 'h', 'q', 'c', 'n'],
+    sign: "The roots of the Hollow Oak. It looks like every critter in Foxhollows followed you here!",
+    decorate(b, at) {
+      // a buzzer and a moth flitting over the first stretches
+      b.put(at[1][1] - 3, 5, 'z'); b.put(at[4][1] - 3, 6, 'm'); b.put(at[7][1] - 3, 5, 'Z');
+      b.put(at[2][1] - 4, 2, 'e'); b.put(at[5][1] - 4, 2, 'n');
+    },
+  });
+}
+
+function o2() {
+  // Heartwood Climb: straight up the inside of the trunk, one season per floor.
+  const b = new B(22, 46);
+  b.fill(0, 0, 0, 45, 'r'); b.fill(21, 21, 0, 45, 'r'); b.fill(0, 21, 45, 45, 'r');
+  b.ground(1, 20);
+  b.put(2, 2, 'P');
+  b.sign(4, 2, 'The heartwood! Climb all the way up to the clock chamber, one season at a time.');
+  // Spring: bounce up onto the first floor.
+  b.put(10, 2, 'f'); b.fill(13, 20, 2, 7, '#'); b.put(10, 10, 'G'); b.acorns(5, 5, 3);
+  b.put(7, 2, 'g');
+  // Winter: freeze the waterfall and wall-jump up between it and the rock.
+  b.put(13, 8, 'C');
+  b.fill(14, 14, 11, 18, 'r'); b.fill(17, 18, 8, 18, 'w'); b.fill(19, 20, 8, 18, '#');
+  b.fill(1, 13, 18, 18, '#');
+  // Summer: melt the ice wall, then ride the heat grate up.
+  b.fill(8, 8, 19, 24, 'j'); b.put(11, 19, 'c'); b.put(12, 22, 'G'); b.put(6, 23, 'L');
+  b.put(3, 19, 'V'); b.acorns(9, 21, 3);
+  b.fill(5, 20, 25, 25, '#');
+  // Autumn: a gust vent, then glide all the way across to the left.
+  b.put(12, 26, 'C'); b.put(15, 26, 'e');
+  b.put(18, 26, 'U'); b.put(20, 33, 'G'); b.arc(11, 31, 5);
+  b.fill(1, 9, 30, 30, '#');
+  // Spring again: climb the vine to the top.
+  b.put(4, 31, 'v'); b.put(7, 31, 'h');
+  b.fill(6, 20, 37, 37, '#');
+  b.acorns(8, 39, 4);
+  b.sign(11, 38, 'Nearly there. The clock chamber is just beyond the bell.');
+  b.put(17, 38, 'E');
+  return b.done({ id: 'O-2', name: 'Heartwood Climb', theme: 'oak', fade: 0.2, vertical: true });
+}
+
+function o3() {
+  // Wind the Clock: platforms come and go in time with the music, and the seasons turn once a bar.
+  const b = new B(262, 18);
+  b.ground(0, 12); b.put(2, 2, 'P'); b.put(6, 2, 'T');
+  b.sign(10, 2, 'Tick blocks are solid on beats 1 and 2, tock blocks on beats 3 and 4. Listen to the clock!');
+  // --- Spring ---
+  b.fill(14, 16, 1, 1, '1'); b.fill(19, 21, 1, 1, '2'); b.fill(24, 26, 1, 1, '1');
+  b.ground(29, 44); b.put(31, 2, 'C');
+  b.sign(34, 2, 'Season blocks are solid in their own season of the clock. Wake that season yourself and they stay solid near you!');
+  b.acorns(37, 4, 4);
+  b.fill(45, 54, 1, 1, '5'); b.acorns(46, 4, 8);
+  b.ground(55, 59); b.put(57, 2, 'f');
+  b.fill(60, 62, 0, 7, '#'); b.put(61, 8, 'Q');
+  // --- Summer ---
+  b.ground(63, 70); b.put(65, 2, 'C');
+  b.mud(71, 80); b.acorns(72, 4, 8);
+  b.ground(81, 84); b.fill(83, 83, 2, 17, 'j');
+  b.fill(85, 86, 2, 2, '6'); b.fill(88, 89, 4, 4, '6'); b.fill(91, 92, 6, 6, '6');
+  b.fill(93, 95, 6, 6, '2'); b.fill(98, 100, 6, 6, '1'); b.put(99, 9, 'G');
+  b.ground(102, 112); b.put(108, 2, 'V'); b.plat(106, 9, 5); b.put(108, 11, 'Q');
+  b.put(104, 2, 'c');
+  // --- Autumn ---
+  b.put(113, 2, 'C');
+  b.fill(116, 123, 0, 1, 'p'); b.acorns(117, 4, 6);
+  b.ground(124, 131); b.put(129, 2, 'U');
+  // A low cave roof: the glide can't carry you over everything, so rest on the blocks as they come round.
+  b.fill(125, 160, 9, 9, 'r');
+  b.sign(126, 2, 'Glide between the blocks while you wait for the beat!');
+  b.fill(135, 137, 5, 5, '7'); b.acorns(135, 7, 3);
+  b.fill(141, 142, 5, 5, '1'); b.fill(145, 146, 5, 5, '2'); b.fill(149, 150, 5, 5, '1'); b.fill(153, 154, 5, 5, '2'); b.fill(157, 158, 5, 5, '1');
+  b.put(147, 7, 'G');
+  b.ground(162, 172); b.plat(164, 5, 3); b.put(165, 6, 'Q'); b.put(169, 2, 'e');
+  // --- Winter ---
+  b.put(171, 2, 'C');
+  b.water(173, 184); b.put(178, 5, 'G');
+  b.ground(185, 190); b.fill(186, 186, 5, 12, 'r'); b.fill(189, 190, 2, 12, 'w');
+  b.fill(191, 197, 0, 12, '#');
+  b.fill(198, 207, 12, 12, '8'); b.acorns(199, 14, 8);
+  b.fill(208, 211, 0, 12, '#'); b.put(209, 13, 'Q');
+  b.fill(212, 213, 0, 8, '#'); b.fill(214, 215, 0, 4, '#');
+  // --- The Season Clock: climb the year, one step per season ---
+  b.ground(216, 239); b.put(218, 2, 'C');
+  b.sign(221, 2, 'The steps turn with the seasons: spring, summer, autumn, winter. Climb the year to the clock!');
+  b.fill(225, 226, 3, 3, '5'); b.fill(228, 229, 5, 5, '6'); b.fill(231, 232, 7, 7, '7'); b.fill(234, 235, 9, 9, '8'); b.fill(237, 238, 11, 11, '5');
+  b.fill(240, 261, 0, 13, '#'); b.fill(261, 261, 14, 17, 'r');
+  b.put(250, 14, 'W');
+  return b.done({ id: 'O-3', name: 'Wind the Clock', theme: 'clockwork', fade: 0.45, beat: { bpm: 80, gears: 4 }, intro: 'thimble' });
+}
+export const OAK_ORDER = ['O-1', 'O-2', 'O-3'];
+
 const BUILDERS = {
   '0-1': l01, '0-2': l02, '1-1': l11, '1-2': l12, '1-3': l13, '1-4': l14, '1-B': l1b,
   '2-1': l21, '2-2': l22, '2-3': l23, '2-4': l24, '2-B': l2b,
   '3-1': l31, '3-2': l32, '3-3': l33, '3-4': l34, '3-B': l3b,
   '4-1': l41, '4-2': l42, '4-3': l43, '4-4': l44, '4-B': l4b,
   S0: s0, S1: s1, S2: s2, S3: s3, S4: s4,
+  'O-1': o1, 'O-2': o2, 'O-3': o3,
 };
 Object.assign(BUILDERS, BUILDERS_TRAIL);
 export const LEVEL_ORDER = ['0-1', '0-2', '1-1', '1-2', '1-3', '1-4', '1-B', '2-1', '2-2', '2-3', '2-4', '2-B', '3-1', '3-2', '3-3', '3-4', '3-B', '4-1', '4-2', '4-3', '4-4', '4-B'];
@@ -940,5 +1038,10 @@ export const LEVEL_INFO = {
   S4: { name: 'Secret: Sunny Nook', district: 4, music: 'glass', seeds: 0, secret: true },
 };
 Object.assign(LEVEL_INFO, ALMANAC_INFO);
+Object.assign(LEVEL_INFO, {
+  'O-1': { name: 'Oak Roots', district: 5, music: 'almanac', seeds: 3 },
+  'O-2': { name: 'Heartwood Climb', district: 5, music: 'almanac', seeds: 3 },
+  'O-3': { name: 'Wind the Clock', district: 5, music: 'clock', seeds: 3 },
+});
 const built = {};
 export function getLevel(id) { return built[id] || (built[id] = BUILDERS[id]()); }

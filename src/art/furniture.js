@@ -61,6 +61,7 @@ export const FURN = {
   pike_bench: { name: 'Frozen Pike bench', layer: 'floor', w: 2, src: 'trophy', how: 'Beat Old Pike' },
   scarecrow_stand: { name: 'Scarecrow coat-stand', layer: 'floor', w: 1, src: 'trophy', how: 'Beat the Prize Scarecrow' },
   sunlamp: { name: 'Sunlamp Moth lamp', layer: 'floor', w: 1, src: 'trophy', how: 'Beat the Sunlamp Moth' },
+  season_clock: { name: 'Little Season Clock', layer: 'floor', w: 1, src: 'trophy', how: 'Wind the Season Clock' },
 };
 export const SETS = [
   ['cozy', 'Cozy set'], ['garden', 'Garden set'], ['harvest', 'Harvest set'], ['frost', 'Frost set'],
@@ -366,6 +367,18 @@ export function drawFurniture(ctx, id, x, floorY, flip, boil, season, wallY = WA
       for (const s of [-1, 1]) shape(ctx, ellipse(cx + s * 16, y - 88, 13, 9, 12, s * -0.4), { fill: '#f2b33d', rng, lw: 2 });
       shape(ctx, ellipse(cx, y - 88, 5, 11, 10), { fill: '#b98a5e', rng, lw: 1.8 });
       break;
+    case 'season_clock': {
+      shape(ctx, rrect(cx - 16, y - 96, 32, 96, 6), { fill: '#8e6438', rng, lw: 2.4 });
+      shape(ctx, [[cx - 20, y - 94], [cx, y - 112], [cx + 20, y - 94]], { fill: '#6b4a30', rng, lw: 2.2, step: 8 });
+      const fy = y - 74;
+      ['#f08fae', '#f2b33d', '#d9662b', '#7fb6e0'].forEach((c, i) => {
+        ctx.save(); ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(cx, fy); ctx.arc(cx, fy, 12, -Math.PI / 2 + i * Math.PI / 2, i * Math.PI / 2); ctx.closePath(); ctx.fill(); ctx.restore();
+      });
+      shape(ctx, ellipse(cx, fy, 12, 12, 12), { stroke: '#3b2a26', lw: 2, rng, wash: false });
+      line(ctx, [[cx, fy], [cx + 7, fy - 5]], { rng, lw: 2 });
+      line(ctx, [[cx, y - 54], [cx, y - 26]], { rng, lw: 1.8 }); dot(ctx, cx, y - 24, 5, '#e2b34a');
+      break;
+    }
     // ---- wall items (centred on wy) ----
     case 'clock':
       shape(ctx, ellipse(cx, wy - 10, 20, 20, 16), { fill: '#fbf0dc', rng, lw: 2.4, wash: false });

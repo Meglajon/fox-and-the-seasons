@@ -3,7 +3,7 @@ import { audio, inst, drums } from './audio.js';
 
 export const TRACK_NAMES = {
   title: 'A Year Turns', den: 'The Den', map: 'Foxhollows, Paused', bloom: 'Bloomwood', boss: 'Grumpy Critters',
-  pond: 'Millpond Under Glass', orchard: 'Copperleaf Drift', glass: 'Greenhouse Noon', almanac: 'The Almanac Trail',
+  pond: 'Millpond Under Glass', orchard: 'Copperleaf Drift', glass: 'Greenhouse Noon', almanac: 'The Almanac Trail', clock: 'Wind the Clock',
 };
 
 // In each district's track, switching to that district's season fades in its own instruments.
@@ -226,6 +226,38 @@ export const TRACKS = {
     },
   },
 
+  // 9. Wind the Clock (finale): one bar per season, each with its own lead, over a ticking clock.
+  // Every clock gear Fennel finds brings in another layer, and the tempo climbs from 80 to 100.
+  clock: {
+    bpm: 80, swing: 0.06, bars: 8,
+    layers: {
+      tick: { v: 0.9, drum: true }, keys: { v: 0.7 }, bass: { v: 0 }, drums: { v: 0, drum: true }, pad: { v: 0 }, bells: { v: 0 },
+      spr: { v: 1 }, sum: { v: 1 }, aut: { v: 1 }, win: { v: 1 },
+    },
+    chords: [
+      { n: [62, 66, 69, 73], b: 38 }, { n: [59, 62, 66, 69], b: 35 }, { n: [55, 59, 62, 66], b: 43 },
+      { n: [57, 62, 64, 67], b: 45, n2: [57, 61, 64, 67] }, { n: [54, 57, 62, 66], b: 42 }, { n: [55, 59, 62, 66], b: 43 },
+      { n: [52, 55, 59, 62], b: 40 }, { n: [57, 61, 64, 69], b: 45 },
+    ],
+    arp: { layer: 'keys', inst: 'piano', steps: [0, 4, 8, 12], v: 0.32 },
+    bass: { layer: 'bass', hits: [[0, 0, 6, 0.9], [6, 7, 2, 0.5], [8, 0, 4, 0.7], [12, 12, 2, 0.5], [14, 7, 2, 0.45]] },
+    pad: { layer: 'pad' },
+    drums: { layer: 'drums', kick: [0, 6, 8], snare: [4, 12], sv: 0.55, hat: EIGHTHS, hv: 0.4, ghost: true },
+    mel: [
+      { layer: 'spr', inst: 'kalimba', notes: CLOCK_MEL([0, 4]) },
+      { layer: 'sum', inst: 'pluck', notes: CLOCK_MEL([1, 5]) },
+      { layer: 'aut', inst: 'nylon', notes: CLOCK_MEL([2, 6]) },
+      { layer: 'win', inst: 'musicbox', notes: CLOCK_MEL([3, 7]) },
+    ],
+    extra(s, t, L) {
+      const bar = s >> 4, st = s & 15;
+      // tick... tock... on every beat, so the beat blocks are easy to follow.
+      if (st % 4 === 0) drums.rim(L.tick, t, st === 0 ? 0.9 : 0.55);
+      if (st === 0) [86, 90, 93].forEach((m, i) => inst.musicbox(L.bells, t + i * 0.08, m - (bar % 2) * 2, 0.5, 0.45));
+      if (bar % 4 === 0 && st === 0) inst.bird(L.spr, t + 0.4, 0.5);
+    },
+  },
+
   // 5. Mini-boss — Grumpy Critters
   boss: {
     bpm: 96, swing: 0.05, bars: 4,
@@ -248,6 +280,19 @@ export const TRACKS = {
   },
 };
 
+function CLOCK_MEL(bars) {
+  const all = [
+    [0, 0, 74, 2], [0, 2, 78, 2], [0, 4, 81, 4], [0, 8, 78, 2], [0, 10, 76, 2], [0, 12, 74, 4],
+    [1, 0, 78, 2], [1, 2, 81, 2], [1, 4, 83, 4], [1, 8, 81, 4], [1, 12, 78, 4],
+    [2, 0, 79, 4], [2, 4, 78, 2], [2, 6, 74, 2], [2, 8, 71, 4], [2, 12, 74, 4],
+    [3, 0, 76, 6], [3, 6, 73, 2], [3, 8, 76, 8],
+    [4, 0, 81, 2], [4, 2, 78, 2], [4, 4, 74, 4], [4, 8, 78, 2], [4, 10, 81, 2], [4, 12, 86, 4],
+    [5, 0, 83, 4], [5, 4, 81, 2], [5, 6, 79, 2], [5, 8, 78, 8],
+    [6, 0, 79, 2], [6, 2, 78, 2], [6, 4, 76, 4], [6, 8, 74, 2], [6, 10, 76, 2], [6, 12, 79, 4],
+    [7, 0, 78, 4], [7, 4, 76, 4], [7, 8, 73, 4], [7, 12, 76, 4],
+  ];
+  return all.filter((n) => bars.includes(n[0]));
+}
 function GLASS_MEL() {
   return [
     [0, 0, 76, 2], [0, 2, 80, 2], [0, 4, 81, 4], [0, 8, 80, 2], [0, 10, 76, 2], [0, 12, 73, 4],
@@ -400,6 +445,15 @@ export function setLayer(name, v, time = 0.6) {
 }
 export function setTempo(m) { if (cur && !locked) cur.tempo = m; }
 export const currentTrack = () => (cur ? cur.id : want ? want.id : null);
+// Where the music is right now, in beats since the track started (or null if it isn't playing).
+// The finale's beat blocks follow this so they switch exactly in time with what you hear.
+export function musicBeat(id) {
+  if (!cur || cur.id !== id || !audio.ctx || audio.ctx.state !== 'running') return null;
+  const ctx = audio.ctx;
+  const spb = 60 / (cur.sp.bpm * cur.tempo) / 4;
+  const heard = ctx.currentTime - (ctx.outputLatency || 0) - (ctx.baseLatency || 0);
+  return (cur.step - (cur.next - heard) / spb) / 4;
+}
 
 function tick() {
   if (!audio.ctx || !cur) return;

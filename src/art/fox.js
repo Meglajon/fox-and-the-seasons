@@ -23,7 +23,7 @@ export const HATS = [
   { id: 'straw', name: 'Straw hat', price: 35 },
   { id: 'beret', name: 'Leaf beret', how: 'Wake up Copperleaf Orchard' },
   { id: 'sunhat', name: 'Sun hat', how: 'Wake up the Sunglass Greenhouse' },
-  { id: 'keeper', name: "Clockkeeper's cap", how: 'Coming in the next build' },
+  { id: 'keeper', name: "Clockkeeper's cap", how: 'Wind the Season Clock' },
 ];
 export const EXTRAS = [
   { id: 'glasses', name: 'Round glasses', price: 20 }, { id: 'satchel', name: 'Satchel', price: 30 },

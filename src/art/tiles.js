@@ -2,6 +2,8 @@
 import { engine } from '../core/engine.js';
 import { shape, line, ellipse, rrect, rngFor, dot, INK } from './ink.js';
 import { shade } from '../core/util.js';
+import { drawSeasonIcon } from './critters.js';
+import { SEASON_COLOR } from './palettes.js';
 
 export const T = 48;
 const PAD = 10;
@@ -46,6 +48,27 @@ function paint(x, ch, mask, v, pal, rng) {
   else if (ch === 'D') driedMud(x, mask, v, pal, rng);
   else if (ch === 'j') iceWall(x, v, pal, rng);
   else if (ch === 'J') meltedWall(x, v, pal, rng);
+  else if (ch === '1' || ch === '2') beatBlock(x, ch, pal, rng);
+  else if (BLOCK_SEASON[ch]) seasonBlock(x, BLOCK_SEASON[ch], rng);
+}
+
+// The finale's clockwork blocks. '1' (tick) is solid on beats 1-2 of every bar, '2' (tock) on beats 3-4.
+// '5'-'8' are season blocks: solid in their own season of the clock, or near Fennel's matching season.
+export const BLOCK_SEASON = { 5: 'spring', 6: 'summer', 7: 'autumn', 8: 'winter' };
+function beatBlock(x, ch, pal, rng) {
+  const tick = ch === '1';
+  const fill = tick ? '#e9b949' : '#6fb9b1';
+  shape(x, rrect(2, 2, T - 4, T - 4, 8), { fill, rng, lw: 2.6, wob: 0.6 });
+  shape(x, rrect(7, 7, T - 14, T - 14, 5), { stroke: shade(fill, -0.35), lw: 1.5, rng, wob: 0.4, wash: false });
+  if (tick) dot(x, T / 2, T / 2, 6, shade(fill, -0.45));
+  else { dot(x, T / 2 - 8, T / 2, 5, shade(fill, -0.45)); dot(x, T / 2 + 8, T / 2, 5, shade(fill, -0.45)); }
+  x.fillStyle = '#ffffff'; x.globalAlpha = 0.45; x.fillRect(9, 6, T - 22, 3); x.globalAlpha = 1;
+}
+function seasonBlock(x, season, rng) {
+  const fill = shade(SEASON_COLOR[season], 0.25);
+  shape(x, rrect(2, 2, T - 4, T - 4, 10), { fill, rng, lw: 2.6, wob: 0.7 });
+  drawSeasonIcon(x, T / 2, T / 2, season, 12, shade(SEASON_COLOR[season], -0.45));
+  x.fillStyle = '#ffffff'; x.globalAlpha = 0.5; x.fillRect(10, 6, T - 24, 3); x.globalAlpha = 1;
 }
 
 // Mud: thick and sticky (you sink). Summer bakes it into cracked, solid earth.

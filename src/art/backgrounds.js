@@ -4,6 +4,7 @@ import { shape, line, ellipse, rrect, rngFor, dot } from './ink.js';
 import { hash2, shade } from '../core/util.js';
 
 export function drawBackground(ctx, pal, camX, camY, maxCamY, time, boil) {
+  if (pal.theme === 'oak' || pal.theme === 'clockwork') { interior(ctx, pal, camX, camY, time, boil); return; }
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, pal.sky1);
   g.addColorStop(1, pal.sky2);
@@ -75,6 +76,11 @@ function scenery(ctx, pal, off, base, boil) {
       if (((i % 5) + 5) % 5 === 2) glasshouse(ctx, x, base, pal, rng);
       else if (r < 0.5) palm(ctx, x, base, pal, rng, r);
       else cactusPot(ctx, x, base, pal, rng, r);
+    } else if (th === 'oakroots') {
+      const k = ((i % 3) + 3) % 3;
+      if (k === 0) rootArch(ctx, x, base, pal, rng, r);
+      else if (k === 1) toadstool(ctx, x, base, pal, rng, r);
+      else tree(ctx, x, base, { ...pal, blossom: r > 0.5 ? '#e0783a' : '#f7c2d2' }, rng, r);
     } else if (th === 'almanac') {
       const k = ((i % 4) + 4) % 4;
       if (k === 0) tree(ctx, x, base, pal, rng, r);
@@ -210,4 +216,73 @@ function sunflower(ctx, x, base, pal, rng, r) {
     shape(ctx, ellipse(x + Math.cos(ang) * 16, base - h + Math.sin(ang) * 16, 9, 5, 8, ang), { fill: '#f6c445', rng, lw: 1.6 });
   }
   shape(ctx, ellipse(x, base - h, 11, 11, 12), { fill: '#7a5230', rng, lw: 1.8 });
+}
+
+// ---------- the Hollow Oak ----------
+function rootArch(ctx, x, base, pal, rng, r) {
+  const w = 120 + r * 60;
+  shape(ctx, [[x - w / 2, base + 30], [x - w / 2 + 10, base - 50], [x - 10, base - 110 - r * 30], [x + 20, base - 112 - r * 30], [x + w / 2 - 6, base - 40], [x + w / 2, base + 30],
+    [x + w / 2 - 22, base + 30], [x + w / 2 - 30, base - 30], [x + 12, base - 86 - r * 30], [x - 6, base - 84 - r * 30], [x - w / 2 + 32, base - 36], [x - w / 2 + 24, base + 30]], { fill: pal.trunk, rng, lw: 2.2, step: 18 });
+  for (let k = 0; k < 3; k++) dot(ctx, x - 30 + k * 30, base - 70 - r * 20 + (k % 2) * 16, 3, '#f6e08a');
+}
+function toadstool(ctx, x, base, pal, rng, r) {
+  const h = 40 + r * 50;
+  shape(ctx, rrect(x - 8, base - h, 16, h + 20, 6), { fill: '#f3e7d2', rng, lw: 2 });
+  shape(ctx, [[x - 36 - r * 10, base - h + 6], [x - 26, base - h - 22], [x, base - h - 32], [x + 26, base - h - 22], [x + 36 + r * 10, base - h + 6]], { fill: r > 0.5 ? '#c9473d' : '#8a6fb0', rng, lw: 2.2, step: 12 });
+  for (let k = 0; k < 4; k++) dot(ctx, x - 22 + k * 15, base - h - 10 - (k % 2) * 10, 3.5, '#fffaf0');
+}
+// Inside the oak: wood grain and knots, with glowing fungi in the heartwood and big brass gears in the clock chamber.
+function interior(ctx, pal, camX, camY, time, boil) {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, pal.sky1); g.addColorStop(1, pal.sky2);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  const gx = camX * 0.15, gy = camY * 0.15;
+  ctx.save(); ctx.globalAlpha = 0.4;
+  for (let i = Math.floor(gx / 70) - 1; i <= Math.floor((gx + W) / 70) + 1; i++) {
+    const x = i * 70 - gx + hash2(i, 9) * 30, pts = [];
+    for (let y = -60; y <= H + 60; y += 60) pts.push([x + Math.sin((y + gy) * 0.012 + i) * 14, y]);
+    line(ctx, pts, { rng: rngFor(i * 7 + 3, boil), stroke: pal.far, lw: 3, wob: 1, step: 30 });
+  }
+  ctx.restore();
+  const span = 300, kx = camX * 0.3, ky = camY * 0.3;
+  for (let i = Math.floor(kx / span) - 1; i <= Math.floor((kx + W) / span) + 1; i++) {
+    for (let j = Math.floor(ky / span) - 1; j <= Math.floor((ky + H) / span) + 1; j++) {
+      const h = hash2(i, j, 4);
+      const x = i * span - kx + h * 160, y = j * span - ky + hash2(j, i, 5) * 160;
+      const rng = rngFor(i * 31 + j * 17, boil);
+      if (pal.theme === 'clockwork') {
+        if (h < 0.25) continue;
+        gear(ctx, x, y, 34 + h * 50, Math.round(8 + h * 8), time * (0.4 + h * 0.5) * (((i + j) & 1) ? 1 : -1), pal, rng, 0.4);
+      } else if (h > 0.5) {
+        ctx.save(); ctx.globalAlpha = 0.5;
+        for (let k = 0; k < 3; k++) shape(ctx, ellipse(x, y, 16 + k * 14, 26 + k * 20, 16), { stroke: pal.near, lw: 2, rng, wash: false });
+        ctx.restore();
+      } else {
+        // a shelf of glowing fungus
+        ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(time * 1.5 + i + j) * 0.08; dot(ctx, x, y, 46, '#ffe9a0'); ctx.restore();
+        for (let k = 0; k < 3; k++) shape(ctx, ellipse(x - 20 + k * 20, y + (k % 2) * 8, 16, 7, 12), { fill: '#f2d38a', rng, lw: 1.8 });
+      }
+    }
+  }
+  // soft light coming down from a knot-hole above
+  ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = '#fff2c4';
+  const lx = 600 - camX * 0.1;
+  ctx.beginPath(); ctx.moveTo(lx - 30, 0); ctx.lineTo(lx + 30, 0); ctx.lineTo(lx + 180, H); ctx.lineTo(lx + 40, H); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+export function gear(ctx, x, y, R, n, rot, pal, rng, alpha = 0.75) {
+  const pts = [];
+  for (let k = 0; k < n * 2; k++) {
+    const a = rot + (k / (n * 2)) * Math.PI * 2, rr = k % 2 ? R - 10 : R;
+    pts.push([x + Math.cos(a - 0.08) * rr, y + Math.sin(a - 0.08) * rr], [x + Math.cos(a + 0.08) * rr, y + Math.sin(a + 0.08) * rr]);
+  }
+  ctx.save(); ctx.globalAlpha = alpha;
+  shape(ctx, pts, { fill: pal.near, rng, lw: 2.2, wob: 0.6, step: 400 });
+  shape(ctx, ellipse(x, y, R * 0.55, R * 0.55, 16), { fill: shade(pal.near, -0.15), rng, lw: 1.8, wash: false });
+  for (let k = 0; k < 4; k++) {
+    const a = rot + k * Math.PI / 2;
+    line(ctx, [[x, y], [x + Math.cos(a) * R * 0.55, y + Math.sin(a) * R * 0.55]], { rng, lw: 3, stroke: shade(pal.near, -0.35) });
+  }
+  dot(ctx, x, y, 6, shade(pal.near, -0.4));
+  ctx.restore();
 }

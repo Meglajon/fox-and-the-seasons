@@ -90,6 +90,27 @@ export const DISTRICTS = {
 
 export const SEASON_DISTRICT = { spring: 1, winter: 2, autumn: 3, summer: 4 };
 
+// The Hollow Oak: meeting Thimble, winding the Season Clock, and the ending.
+export const FINALE = {
+  intro: [
+    { who: 'thimble', text: '{name}. You came all this way. Of course you did.' },
+    { who: 'thimble', text: 'I am sorry. I hid the stones because a turning year meant leaving Marigold further behind... and, one day, handing the clock to someone else.' },
+    { who: 'thimble', text: 'But you carried every season back through Foxhollows. The whole town is waking up. I think I am, too.' },
+    { who: 'thimble', text: 'The Season Clock is at the top of this chamber. It only winds to the music of the year, so listen: the blocks come and go on the beat.' },
+    { who: 'thimble', text: 'Find the four gears, one for each season, then climb the year to the clock. I will be right behind you.' },
+  ],
+  wound: [
+    { who: 'thimble', text: 'Listen... it is ticking. The year is turning again.' },
+  ],
+  ending: [
+    { who: 'thimble', text: 'Marigold always said the best gardens are planted by people who will never sit in their shade. I think I finally understand her.' },
+    { who: 'thimble', text: 'This is the clock key. It belongs to the keeper of the Season Clock.' },
+    { who: null, text: '{name} received the Clock Key!' },
+    { who: 'thimble', text: 'Do not look so worried. I will still be about. Somebody has to run the shop.' },
+    { who: 'thimble', text: 'Now, then, Keeper. Shall we go and watch the year go round?' },
+  ],
+};
+
 // What friends say when you walk up to them.
 export function npcLines(who, d, talks) {
   if (who === 'juniper') {
@@ -125,7 +146,9 @@ export function npcLines(who, d, talks) {
     ] : [{ who, text: '...the golden thing is in the big flowerpot, just past the cactus hedgehogs. Do not jump on them. Ouch.' }];
   }
   if (who === 'thimble') {
-    return [{ who, text: '...' }];
+    return talks === 1
+      ? [{ who, text: 'Listen for the tick and the tock. Once you hear the rhythm, your paws will find it too.' }]
+      : [{ who, text: 'Four gears, one for each season. Then up the steps to the clock. I believe in you, {name}.' }];
   }
   return [];
 }

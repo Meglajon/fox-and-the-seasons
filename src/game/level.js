@@ -12,8 +12,10 @@ import { panel, text, shape, ellipse, rngFor, line, dot, keycap } from '../art/i
 import { drawPaw, drawAcorn, drawSeed, drawSeasonIcon, drawZ, drawStoneGem } from '../art/critters.js';
 import { drawLeafGlider } from '../art/critters2.js';
 import { sfx } from '../audio/sfx.js';
-import { playMusic, setLayer, setTempo, stopMusic, SEASON_LAYERS } from '../audio/music.js';
-import { getLevel, LEVEL_INFO, LEVEL_ORDER, ALMANAC_ORDER } from './levels.js';
+import { playMusic, setLayer, setTempo, stopMusic, SEASON_LAYERS, musicBeat } from '../audio/music.js';
+import { getLevel, LEVEL_INFO, LEVEL_ORDER, ALMANAC_ORDER, OAK_ORDER } from './levels.js';
+import { Gear, SeasonClock, CLOCK_ORDER, drawClockDial } from './clock.js';
+import { BLOCK_SEASON } from '../art/tiles.js';
 import { Player } from './player.js';
 import {
   Critter, Acorn, PopAcorn, Berry, GoldenSeed, StonePickup, LetterPickup, Lantern, Bell, Mushroom, Soil, Sign, NPC, Pumpkin,
@@ -22,22 +24,25 @@ import { Vent, Pike, Scarecrow, Burrow, Starbloom } from './bosses.js';
 import { SunMoth } from './bosses2.js';
 import { drawThermo, drawGlowLamp } from '../art/critters3.js';
 import { RAINBOW } from '../art/critters2.js';
-import { DISTRICTS, npcLines } from './story.js';
+import { DISTRICTS, npcLines, FINALE } from './story.js';
 import { addAcorns, addLife, checkSeedRewards, unlockOutfit, grantFurniture } from './progress.js';
 import { Dialogue, Choice, LetterCard, Card, ListMenu, fmt } from '../ui/ui.js';
 import { SettingsCabinet } from '../ui/screens.js';
 import { MapScene } from '../scenes/map.js';
 import { DenScene } from '../scenes/den.js';
 import { TrailScene } from '../scenes/trail.js';
+import { EndingScene } from '../scenes/ending.js';
 
 const SOLID = new Set(['#', 'r', '?', 'L', 'u', 'i']);
 // Tiles that stay in the grid (everything else is turned into an object when the level loads).
-const TILES = new Set(['#', 'r', '=', '?', 'L', 'u', 'b', '~', 'R', 'w', 'i', 'p', '%', 'j']);
+const TILES = new Set(['#', 'r', '=', '?', 'L', 'u', 'b', '~', 'R', 'w', 'i', 'p', '%', 'j', '1', '2', '5', '6', '7', '8']);
+// Finale blocks that come and go with the music.
+const BEAT_TILES = new Set(['1', '2', '5', '6', '7', '8']);
 const CRITTERS = { g: 'grub', d: 'snap', z: 'buzz', Z: 'buzz', e: 'beetle', h: 'frog', q: 'squirrel', m: 'moth', c: 'cactus', n: 'slug' };
-const NPCS = { J: 'juniper', O: 'puddle', Y: 'rook', B: 'basil' };
+const NPCS = { J: 'juniper', O: 'puddle', Y: 'rook', B: 'basil', T: 'thimble' };
 // Which season makes which tile "active" (ice for water, a solid heap for leaf piles,
 // baked earth for mud, nothing at all for a melted ice wall).
-const SEASON_TILE = { '~': 'winter', w: 'winter', p: 'autumn', '%': 'summer', j: 'summer' };
+const SEASON_TILE = { '~': 'winter', w: 'winter', p: 'autumn', '%': 'summer', j: 'summer', ...BLOCK_SEASON };
 const ACTIVE_LOOK = { '~': 'I', w: 'Y', p: 'P', '%': 'D', j: 'J' };
 const TRACK_FOR_STONE = { '1-1': 'bloom', '2-1': 'pond', '3-1': 'orchard', '4-1': 'glass', 'A-1': 'almanac' };
 
@@ -59,6 +64,7 @@ export class LevelScene {
     this.load();
     const m = this.info.music;
     if (m === 'map') playMusic('map', { drums: 1, bass: 1, keys: 0.7, pad: 0.6 });
+    else if (this.data.beat) playMusic(m, this.clockLayers());
     else playMusic(m);
     setTempo(this.data.autoscroll ? 1.1 : 1);
     engine.irisX = this.player.cx - this.camX; engine.irisY = this.player.cy - this.camY;
@@ -66,6 +72,10 @@ export class LevelScene {
       this.introDone = true;
       pushOverlay(new Dialogue(this.district.bossIntro, () => this.boss.start(this)));
     } else if (this.boss) this.boss.start(this);
+    else if (this.data.intro && !this.introDone) {
+      this.introDone = true;
+      pushOverlay(new Dialogue(FINALE.intro));
+    }
   }
   exit() { setTempo(1); }
 
@@ -74,6 +84,7 @@ export class LevelScene {
     this.w = d.w; this.h = d.h;
     this.tiles = d.rows.map((r) => r.split(''));
     this.ents = []; this.critters = []; this.lanterns = []; this.signs = []; this.parts = []; this.floaters = [];
+    this.inside = new Set(); if (d.beat && this.beat == null) this.beat = 0;
     this.bumps = new Map(); this.act = new Map(); this.cracks = new Map();
     this.boss = null; this.bell = null; this.time = 0; this.state = 'play'; this.clearT = 0; this.respawning = false;
     const had = state.data.seeds[this.id] || [];
@@ -99,6 +110,8 @@ export class LevelScene {
           case '^': this.ents.push(new Mushroom(x, y)); break;
           case 'C': { const l = new Lantern(x, y, lanternIdx++); this.lanterns.push(l); this.ents.push(l); break; }
           case 'E': this.bell = new Bell(x, y); this.ents.push(this.bell); break;
+          case 'Q': this.ents.push(new Gear(x, y)); break;
+          case 'W': this.ents.push(new SeasonClock(x, y)); break;
           case 'K': {
             const season = d.stone || 'spring';
             if (!state.data.stones[season]) this.ents.push(new StonePickup(x, y, season));
@@ -113,6 +126,8 @@ export class LevelScene {
       }
     }
     // Things that need to know where the walls are (vines measure their height, vents their wind column).
+    // In a tall climbing level, checkpoints count from the bottom up.
+    if (d.vertical) { this.lanterns.sort((a, b) => b.y - a.y); this.lanterns.forEach((l, i) => { l.idx = i; }); }
     for (const [x, y, c] of deferred) this.ents.unshift(c === 'U' || c === 'V' ? new Vent(x, y, this, c === 'V' ? 'summer' : 'autumn') : new Soil(x, y, c, this));
     this.computeMasks();
 
@@ -122,7 +137,7 @@ export class LevelScene {
       px = l.x + 40; py = l.y + l.h;
       for (const ll of this.lanterns) if (ll.idx <= this.cpIndex) ll.lit = true;
     }
-    if (this.skipTo) { px = this.skipTo; this.skipTo = null; }
+    if (this.skipTo) { px = this.skipTo.x ?? this.skipTo; if (this.skipTo.y) py = this.skipTo.y; this.skipTo = null; }
     if (this.opts.spawn && !this.spawned) { px = this.opts.spawn.x; py = this.opts.spawn.y; this.spawned = true; }
     // A skip-ahead or a later lantern can put you past a season stone you haven't picked up yet.
     // Never leave you stuck without it: the stone comes with you to where you start.
@@ -131,6 +146,10 @@ export class LevelScene {
         e.x = px - e.w / 2; e.y = py - e.h - 6; e.followed = true;
       }
     }
+    // Clock gears you already passed (before a lantern or a skip) stay collected.
+    this.gears = 0;
+    for (const e of this.ents) if (e instanceof Gear && e.x + e.w / 2 < px - T) { e.dead = true; this.gears++; }
+    this.ents = this.ents.filter((e) => !e.dead);
     this.player = new Player(px, py);
     const own = this.district?.season;
     if (own && state.data.stones[own]) this.player.setSeason(own, true);
@@ -140,7 +159,7 @@ export class LevelScene {
 
     const theme = this.data.theme;
     const awake = theme === 'square' ? false : !!state.data.cleared[this.district?.boss];
-    this.palBase = makePal(theme, theme === 'square' ? 0.5 : theme === 'almanac' ? 0.3 : awake ? 0.12 : 0.6);
+    this.palBase = makePal(theme, this.baseFade(awake));
     this.palVivid = makePal(theme, 0);
     this.camX = clamp(px - W / 2, 0, this.w * T - W);
     this.camY = clamp(py - H * 0.6, -2 * T, Math.max(0, this.h * T - H));
@@ -150,6 +169,77 @@ export class LevelScene {
     if (d.boss === 'scarecrow') this.boss = new Scarecrow(this);
     if (d.boss === 'sunmoth') this.boss = new SunMoth(this);
     this.heat = 0; this.lights = [];
+  }
+
+  baseFade(awake) {
+    const d = this.data, theme = d.theme;
+    if (d.beat) return Math.max(0, (d.fade ?? 0.45) - this.gears * 0.11);
+    if (d.fade != null) return d.fade;
+    return theme === 'square' ? 0.5 : theme === 'almanac' ? 0.3 : awake ? 0.12 : 0.6;
+  }
+
+  // ---------- the finale's beat clock ----------
+  // this.beat counts beats since the music started. Tick blocks are solid on beats 1-2 of a bar, tock blocks on 3-4,
+  // and each season block in its own bar of the clock's four-bar year. Both overlap by a quarter beat at each switch.
+  clockTempo() { return (this.data.beat.bpm + this.gears * 5) / this.data.beat.bpm; }
+  clockLayers() { const g = this.gears || 0; return { bass: g >= 1 ? 0.95 : 0, drums: g >= 2 ? 0.8 : 0, pad: g >= 3 ? 0.7 : 0, bells: g >= 4 ? 0.6 : 0 }; }
+  updateBeat(dt) {
+    this.beat += (dt * this.data.beat.bpm * this.clockTempo()) / 60;
+    const mb = musicBeat(this.info.music);
+    if (mb != null) {
+      const diff = ((((mb - this.beat) % 32) + 48) % 32) - 16;
+      this.beat += Math.abs(diff) > 1 ? diff : diff * Math.min(1, dt * 6);
+    }
+  }
+  beatPhase() { return ((this.beat % 4) + 4) % 4; }
+  tileOn(c, tx, ty) {
+    if (c === '1' || c === '2') {
+      const ph = this.beatPhase();
+      return c === '1' ? ph < 2.25 || ph >= 3.75 : ph >= 1.75 || ph < 0.25;
+    }
+    if (this.act.has(ty * this.w + tx)) return true;
+    const yr = ((this.beat % 16) + 16) % 16, d = (((yr - CLOCK_ORDER.indexOf(BLOCK_SEASON[c]) * 4) % 16) + 16) % 16;
+    return d < 4.25 || d >= 15.75;
+  }
+  // How a block will look in half a beat (to warn before it vanishes or appears).
+  tileSoon(c, tx, ty) { const b = this.beat; this.beat += 0.5; const on = this.tileOn(c, tx, ty); this.beat = b; return on; }
+  // Blocks never switch on around Fennel: a block that appears where you're standing stays see-through until you leave it.
+  updateInside() {
+    const p = this.player, set = new Set();
+    for (let ty = Math.floor((p.y + 2) / T); ty <= Math.floor((p.bottom - 2) / T); ty++) {
+      for (let tx = Math.floor((p.x + 2) / T); tx <= Math.floor((p.x + p.w - 2) / T); tx++) {
+        const c = this.tiles[ty]?.[tx];
+        if (!BEAT_TILES.has(c)) continue;
+        const k = ty * this.w + tx;
+        if (this.inside.has(k) || !this.tileOn(c, tx, ty)) set.add(k);
+      }
+    }
+    this.inside = set;
+  }
+  gotGear(x, y) {
+    this.gears++;
+    sfx('unlock'); this.burst(x, y, 'spark', 22); shake(3);
+    const n = this.data.beat.gears;
+    toast(this.gears >= n ? 'All four gears! Now wind the Season Clock.' : `Clock gear! (${this.gears} of ${n})`);
+    this.float(['Spring', 'Summer', 'Autumn', 'Winter'][this.gears - 1] + ' gear!', x, y - 30, SEASON_COLOR[CLOCK_ORDER[this.gears - 1]]);
+    this.palBase = makePal(this.data.theme, this.baseFade());
+  }
+  needGears() { sfx('deny'); toast(`The clock needs all four gears (${this.gears} of ${this.data.beat.gears})`); }
+  windClock(c) {
+    this.state = 'wound'; this.windT = 0;
+    const p = this.player;
+    p.frozen = true; p.inv = 0;
+    sfx('bell'); shake(6);
+    this.burst(c.cx, c.base - 120, 'spark', 40);
+    this.palBase = this.palVivid;
+  }
+  finishFinale() {
+    const d = state.data;
+    d.cleared[this.id] = true;
+    d.trailNode = [...ALMANAC_ORDER, ...OAK_ORDER].indexOf(this.id) + 1;
+    saveGame();
+    stopMusic(2);
+    transition(() => setScene(new EndingScene()));
   }
 
   computeMasks() {
@@ -227,6 +317,7 @@ export class LevelScene {
     if (ty < 0 || ty >= this.h) return false;
     const c = this.tiles[ty][tx];
     if (SOLID.has(c)) return true;
+    if (BEAT_TILES.has(c)) return !this.inside.has(ty * this.w + tx) && this.tileOn(c, tx, ty);
     if (c === '~' || c === 'w' || c === 'p' || c === '%') return this.act.has(ty * this.w + tx);
     if (c === 'j') return !this.act.has(ty * this.w + tx);
     return false;
@@ -430,7 +521,7 @@ export class LevelScene {
       if (i !== 0) return;
       this.deathsAtCp = 0;
       if (this.cpIndex + 1 < this.lanterns.length) this.cpIndex++;
-      else this.skipTo = this.bell.px - 3 * T;
+      else this.skipTo = this.data.vertical ? { x: this.bell.px - 3 * T, y: this.bell.base } : this.bell.px - 3 * T;
       this.load();
     }));
   }
@@ -473,7 +564,7 @@ export class LevelScene {
     if (this.id === '0-2' && unlockOutfit('hat', 'acorn')) toast('New hat for the wardrobe: Acorn cap!');
     const tr = TRACK_FOR_STONE[this.id];
     if (tr && !d.tracks.includes(tr)) d.tracks.push(tr);
-    if (this.info.district === 5) d.trailNode = ALMANAC_ORDER.indexOf(this.id) + 1;
+    if (this.info.district === 5) d.trailNode = [...ALMANAC_ORDER, ...OAK_ORDER].indexOf(this.id) + 1;
     else d.mapNode = LEVEL_ORDER.indexOf(this.id) + 1;
     saveGame();
     transition(() => setScene(this.mapScene()));
@@ -554,7 +645,9 @@ export class LevelScene {
     const p = this.player;
     if (input.pressed('pause') && this.state === 'play' && !p.dead) { this.openPause(); return; }
 
+    if (this.data.beat) this.updateBeat(dt);
     this.updateSeasonTiles(dt);
+    if (this.data.beat) this.updateInside();
     if (!p.dead) p.update(dt, this);
     else { p.deadT += dt; p.vy += 1800 * dt; p.y += p.vy * dt; if (p.deadT > 1.3) this.afterDeath(); }
     this.updateCracks(dt);
@@ -620,7 +713,10 @@ export class LevelScene {
     for (const [k, v] of this.bumps) { if (v - dt <= 0) this.bumps.delete(k); else this.bumps.set(k, v - dt); }
 
     // Starbloom: speed the music up while it lasts, sparkle, and head back out of a secret room after grabbing it.
-    setTempo(p.star > 0 ? 1.18 : this.data.autoscroll ? 1.1 : 1);
+    if (this.data.beat) {
+      setTempo(this.clockTempo());
+      for (const [k, v] of Object.entries(this.clockLayers())) setLayer(k, v);
+    } else setTempo(p.star > 0 ? 1.18 : this.data.autoscroll ? 1.1 : 1);
     if (p.star > 0 && Math.random() < dt * 30) this.parts.push({ type: 'rainbow', x: p.cx + (Math.random() - 0.5) * 40, y: p.cy + (Math.random() - 0.5) * 40, vx: 0, vy: -40, life: 0.6, max: 0.6, rot: Math.random() * 6, c: RAINBOW[Math.floor(Math.random() * 5)] });
     if (this.leaveT > 0) { this.leaveT -= dt; if (this.leaveT <= 0) this.returnToParent(true); }
     if (this.letterT > 0) {
@@ -629,6 +725,11 @@ export class LevelScene {
     }
     this.updateCamera(dt);
     if (this.data.dark) this.updateLights();
+    if (this.state === 'wound') {
+      this.windT += dt;
+      if (Math.random() < dt * 20) this.burst(this.camX + Math.random() * W, this.camY + Math.random() * H * 0.6, ['petal', 'snow', 'leaf', 'pollen'][Math.floor(Math.random() * 4)], 1);
+      if (this.windT > 1.2 && !this.windTalk) { this.windTalk = true; pushOverlay(new Dialogue(FINALE.wound, () => this.finishFinale())); }
+    }
     if (this.state === 'clear') { this.clearT += dt; if (this.clearT > 2.2 && !this.clearShown) { this.clearShown = true; this.showClear(); } }
   }
 
@@ -723,11 +824,22 @@ export class LevelScene {
         let xo = 0, yo = 0;
         const bump = this.bumps.get(tx + ',' + ty);
         if (bump) yo = -Math.sin((bump / 0.2) * Math.PI) * 9;
+        if (BEAT_TILES.has(c)) { this.drawBeatTile(ctx, c, tx, ty, pal, b); continue; }
         if (SEASON_TILE[c] && this.isActive(tx, ty)) c = ACTIVE_LOOK[c];
         if (c === 'i' && this.cracks.has(ty * this.w + tx)) { c = 'k'; xo = Math.sin(this.time * 60) * 2; }
         drawTile(ctx, c, tx * T - this.camX + xo, ty * T - this.camY + yo, this.masks[ty][tx], Math.floor(hash2(tx, ty) * 3), pal, b);
       }
     }
+  }
+  drawBeatTile(ctx, c, tx, ty, pal, b) {
+    const on = this.tileOn(c, tx, ty), soon = this.tileSoon(c, tx, ty);
+    let a = on ? 1 : 0.2;
+    if (on && !soon) a = Math.floor(this.time * 10) % 2 ? 1 : 0.45; // about to vanish
+    else if (!on && soon) a = 0.55; // about to appear
+    if (on && this.inside.has(ty * this.w + tx)) a = 0.5;
+    ctx.save(); ctx.globalAlpha = a;
+    drawTile(ctx, c, tx * T - this.camX, ty * T - this.camY, 0, 0, pal, b);
+    ctx.restore();
   }
   bubblePath(ctx, cx, cy, R) {
     ctx.beginPath();
@@ -967,6 +1079,7 @@ export class LevelScene {
 
   drawHUD(ctx) {
     const d = state.data, b = engine.boil;
+    if (this.data.beat) drawClockDial(ctx, W / 2, 46, this.beat, this.gears, this.data.beat.gears, b);
     const lives = d.lives;
     const slots = Math.max(START_LIVES, Math.min(15, lives));
     panel(ctx, 12, 10, 26 + slots * 21, 50, { seed: 51, r: 14, boil: 0 });

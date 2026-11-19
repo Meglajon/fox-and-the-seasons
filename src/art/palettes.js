@@ -52,6 +52,22 @@ BASE.almanac = {
   bramble: '#74507a', flower1: '#f4a3bf', flower2: '#f6d36b', house: '#efe0c8', house2: '#d9c3a3', roof: '#a8604d',
   leaf: '#7cb05a', trunk: '#7d5a3e', sun: '#fff4d8', cloud: '#ffffff', blossom: '#f7c2d2',
 };
+// The Hollow Oak: dusky roots outside, warm heartwood inside, and the brass clock chamber at the top.
+BASE.oakroots = {
+  sky1: '#e3a08e', sky2: '#fbe4c9', far: '#a99ab8', near: '#7f9466', grass: '#8cb064', grassDark: '#5f8443',
+  dirt: '#9a6a48', dirtDark: '#6c4630', stone: '#cfc3b0', stoneDark: '#968a76', wood: '#c09060', woodDark: '#805a36',
+  bramble: '#6f4a6e', flower1: '#f4a3bf', flower2: '#f6d36b', house: '#efe0c8', house2: '#d9c3a3', roof: '#a8604d',
+  leaf: '#6f9a52', trunk: '#6b4a32', sun: '#fff0d0', cloud: '#fff4ea', blossom: '#f7c2d2',
+};
+BASE.oak = {
+  sky1: '#7a5038', sky2: '#c08a5c', far: '#a87650', near: '#74492f', grass: '#86b45c', grassDark: '#5a8a3e',
+  dirt: '#9c6a44', dirtDark: '#6a4329', stone: '#d2c2a4', stoneDark: '#97856a', wood: '#d0a066', woodDark: '#8e6438',
+  bramble: '#6d4a5a', flower1: '#f4a3bf', flower2: '#f6d36b', house: '#efe0c8', house2: '#d9c3a3', roof: '#a8604d',
+  leaf: '#7cb05a', trunk: '#5e3e28', sun: '#ffe9b0', cloud: '#fff4dc', blossom: '#f7c2d2',
+};
+BASE.clockwork = {
+  ...BASE.oak, sky1: '#3f4a78', sky2: '#c9a06a', far: '#6f6a98', near: '#d9a75a', stone: '#d8cdb8', stoneDark: '#9b8f78',
+};
 // Water, ice and leaf colours shared by every district.
 for (const k in BASE) {
   Object.assign(BASE[k], {
