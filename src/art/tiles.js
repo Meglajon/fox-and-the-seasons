@@ -42,6 +42,52 @@ function paint(x, ch, mask, v, pal, rng) {
   else if (ch === 'k') floe(x, v, pal, rng, true);
   else if (ch === 'p') pileGhost(x, v, pal, rng);
   else if (ch === 'P') pile(x, mask, v, pal, rng);
+  else if (ch === '%') mud(x, mask, v, pal, rng);
+  else if (ch === 'D') driedMud(x, mask, v, pal, rng);
+  else if (ch === 'j') iceWall(x, v, pal, rng);
+  else if (ch === 'J') meltedWall(x, v, pal, rng);
+}
+
+// Mud: thick and sticky (you sink). Summer bakes it into cracked, solid earth.
+function mud(x, mask, v, pal, rng) {
+  const top = !(mask & 1);
+  x.fillStyle = pal.mud;
+  x.fillRect(-0.6, top ? 10 : -0.6, T + 1.2, T + 1.2 - (top ? 10 : 0));
+  x.fillStyle = pal.mudDark; x.globalAlpha = 0.6;
+  for (let i = 0; i < 3; i++) { x.beginPath(); x.ellipse(6 + rng() * 36, (top ? 22 : 8) + rng() * 22, 4 + rng() * 3, 2, 0, 0, 7); x.fill(); }
+  x.globalAlpha = 1;
+  if (top) {
+    const pts = [];
+    for (let i = 0; i <= 6; i++) pts.push([-1 + (i * (T + 2)) / 6, 10 + Math.sin(i * 1.3 + v * 2) * 2]);
+    line(x, pts, { rng, lw: 2.4, stroke: pal.mudDark, wob: 0.6, step: 20 });
+    shape(x, ellipse(14 + v * 8, 14, 5, 3, 10), { stroke: pal.mudDark, lw: 1.6, rng, wash: false });
+  }
+}
+function driedMud(x, mask, v, pal, rng) {
+  const top = !(mask & 1);
+  x.fillStyle = shade(pal.mud, 0.35);
+  x.fillRect(-0.6, top ? 6 : -0.6, T + 1.2, T + 1.2 - (top ? 6 : 0));
+  if (top) line(x, [[-1, 6], [T + 1, 6]], { rng, lw: 2.4, wob: 0.5 });
+  const c = shade(pal.mud, -0.1);
+  line(x, [[6, top ? 8 : 0], [14, 20], [10, 34], [18, 46]], { rng, stroke: c, lw: 1.6, wob: 0.4 });
+  line(x, [[30, top ? 8 : 0], [26, 18], [36, 30], [32, 46]], { rng, stroke: c, lw: 1.6, wob: 0.4 });
+  line(x, [[14, 20], [26, 18]], { rng, stroke: c, lw: 1.4, wob: 0.4 });
+}
+// Ice wall: a solid block of ice. Summer melts it away.
+function iceWall(x, v, pal, rng) {
+  shape(x, rrect(1, 1, T - 2, T - 2, 5), { fill: pal.ice, rng, lw: 2.4, stroke: pal.iceDark, wob: 0.6 });
+  x.fillStyle = '#ffffff'; x.globalAlpha = 0.7;
+  x.beginPath(); x.moveTo(8, 8 + v * 3); x.lineTo(20, 6); x.lineTo(10, 22); x.closePath(); x.fill();
+  x.globalAlpha = 1;
+  line(x, [[30, 12], [36, 24], [32, 36]], { rng, stroke: pal.iceDark, lw: 1.4, wob: 0.4 });
+}
+function meltedWall(x, v, pal, rng) {
+  x.save(); x.globalAlpha = 0.4; x.setLineDash([4, 6]);
+  shape(x, rrect(3, 3, T - 6, T - 6, 6), { stroke: pal.iceDark, lw: 1.8, rng, wob: 0.5, wash: false });
+  x.restore();
+  x.fillStyle = pal.water; x.globalAlpha = 0.5;
+  x.beginPath(); x.ellipse(24, T - 3, 16, 3, 0, 0, 7); x.fill();
+  x.globalAlpha = 1;
 }
 
 // Water: mask bit 1 = more water above (so no surface ripple on this tile).

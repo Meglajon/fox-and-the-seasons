@@ -5,12 +5,15 @@ import { sfx } from '../audio/sfx.js';
 import { engine } from '../core/engine.js';
 import { drawGrub, drawSnap, drawBuzzer, drawAcorn } from '../art/critters.js';
 import { drawBeetle, drawFrog, drawSquirrel, drawMoth, drawIceCube } from '../art/critters2.js';
+import { drawCactusHog, drawSlug } from '../art/critters3.js';
 
 const G = 2200;
 const SIZES = {
-  grub: [34, 24], snap: [28, 40], buzz: [30, 26], beetle: [32, 24], frog: [30, 26], squirrel: [28, 40], moth: [30, 30],
+  grub: [34, 24], snap: [28, 40], buzz: [30, 26], beetle: [32, 24], frog: [30, 26], squirrel: [28, 40], moth: [30, 30], cactus: [34, 30], slug: [38, 20],
 };
 const FLIERS = new Set(['buzz', 'moth']);
+const WALK = { grub: 45, beetle: 95, cactus: 55, slug: 32 };
+const EDGE_TURN = new Set(['grub', 'cactus', 'slug']);
 const ROOTED = new Set(['snap', 'squirrel']);
 
 export class Critter {
@@ -22,7 +25,7 @@ export class Critter {
     [this.w, this.h] = SIZES[kind];
     this.x = tx * T + T / 2 - this.w / 2;
     this.y = (row + 1) * T - this.h;
-    this.vx = kind === 'grub' ? -45 : kind === 'beetle' ? -95 : 0; this.vy = 0;
+    this.vx = WALK[kind] ? -WALK[kind] : 0; this.vy = 0;
     this.facing = -1; this.bounces = 0; this.zT = 0; this.kickCool = 0; this.thaw = 0;
     this.x0 = this.x; this.y0 = this.y;
     this.snapT = 1 + Math.random(); this.open = 0; this.hopT = 1 + Math.random(); this.puff = 0;
@@ -50,8 +53,7 @@ export class Critter {
   unfreeze() {
     this.frozen = false; this.asleep = false; this.mode = 'awake';
     this.x0 = this.x; this.y0 = this.y; this.t = 0;
-    if (this.kind === 'grub') this.vx = 45 * this.facing;
-    if (this.kind === 'beetle') this.vx = 95 * this.facing;
+    if (WALK[this.kind]) this.vx = WALK[this.kind] * this.facing;
   }
 
   update(dt, L) {
@@ -61,12 +63,14 @@ export class Critter {
     if (this.asleep) return this.updateSleep(dt, L);
     const p = L.player;
     const k = this.kind;
-    if (k === 'grub' || k === 'beetle') {
+    if (WALK[k]) {
       this.vy = Math.min(this.vy + G * dt, 900);
       const pv = this.vx;
+      // Shadow slugs nearly stop when caught in Summer light.
+      if (k === 'slug' && L.summerAt?.(this.cx, this.y + this.h / 2)) this.vx = pv * 0.2;
       L.move(this, dt);
-      if (this.hitX) this.vx = -pv;
-      if (k === 'grub' && this.onGround) {
+      this.vx = this.hitX ? -pv : pv;
+      if (EDGE_TURN.has(k) && this.onGround) {
         const ahead = this.vx > 0 ? this.x + this.w + 2 : this.x - 2;
         if (!L.solidPx(ahead, this.y + this.h + 4) && !L.onewayPx(ahead, this.y + this.h + 4)) this.vx = -this.vx;
       }
@@ -121,7 +125,7 @@ export class Critter {
   updateSleep(dt, L) {
     if (this.frozen && this.mode === 'rest') {
       if (L.winterAt(this.cx, this.y + this.h / 2)) this.thaw = 3;
-      else { this.thaw -= dt; if (this.thaw <= 0) { this.unfreeze(); return; } }
+      else { this.thaw -= dt * (L.summerAt?.(this.cx, this.y + this.h / 2) ? 5 : 1); if (this.thaw <= 0) { this.unfreeze(); return; } }
     }
     if (!this.frozen) {
       this.zT += dt;
@@ -165,6 +169,11 @@ export class Critter {
     else if (k === 'frog') drawFrog(ctx, x, y, o);
     else if (k === 'squirrel') drawSquirrel(ctx, x, y, o);
     else if (k === 'moth') drawMoth(ctx, x, y, o);
+    else if (k === 'cactus') drawCactusHog(ctx, x, y, o);
+    else if (k === 'slug') {
+      const a = L.data.dark ? L.lightAt(this.cx, this.y + this.h / 2) : 1;
+      if (a > 0.02) { ctx.save(); ctx.globalAlpha = a; drawSlug(ctx, x, y, o); ctx.restore(); }
+    }
     if (this.frozen) drawIceCube(ctx, x, y, this.w, this.h, b);
   }
 }

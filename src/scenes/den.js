@@ -36,6 +36,8 @@ export function playRecord() {
   else if (r === 'bloom') playMusic('bloom', { lead: 0.9, birds: 1, shaker: 0.8, hum: 0.2 });
   else if (r === 'pond') playMusic('pond', { lead: 1, chimes: 1, hum: 0.25 });
   else if (r === 'orchard') playMusic('orchard', { lead: 1, wind: 1, hum: 0.25 });
+  else if (r === 'glass') playMusic('glass', { lead: 1, shaker: 1, hum: 0.25 });
+  else if (r === 'almanac') playMusic('almanac', { lead: 1, hum: 0.3 });
   else playMusic(r);
 }
 

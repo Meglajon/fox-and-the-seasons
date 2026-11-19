@@ -13,12 +13,14 @@ import { drawPaw, drawAcorn, drawSeed, drawSeasonIcon, drawZ, drawStoneGem } fro
 import { drawLeafGlider } from '../art/critters2.js';
 import { sfx } from '../audio/sfx.js';
 import { playMusic, setLayer, setTempo, stopMusic, SEASON_LAYERS } from '../audio/music.js';
-import { getLevel, LEVEL_INFO, LEVEL_ORDER } from './levels.js';
+import { getLevel, LEVEL_INFO, LEVEL_ORDER, ALMANAC_ORDER } from './levels.js';
 import { Player } from './player.js';
 import {
   Critter, Acorn, PopAcorn, Berry, GoldenSeed, StonePickup, LetterPickup, Lantern, Bell, Mushroom, Soil, Sign, NPC, Pumpkin,
 } from './entities.js';
 import { Vent, Pike, Scarecrow, Burrow, Starbloom } from './bosses.js';
+import { SunMoth } from './bosses2.js';
+import { drawThermo, drawGlowLamp } from '../art/critters3.js';
 import { RAINBOW } from '../art/critters2.js';
 import { DISTRICTS, npcLines } from './story.js';
 import { addAcorns, addLife, checkSeedRewards, unlockOutfit, grantFurniture } from './progress.js';
@@ -26,15 +28,18 @@ import { Dialogue, Choice, LetterCard, Card, ListMenu, fmt } from '../ui/ui.js';
 import { SettingsCabinet } from '../ui/screens.js';
 import { MapScene } from '../scenes/map.js';
 import { DenScene } from '../scenes/den.js';
+import { TrailScene } from '../scenes/trail.js';
 
 const SOLID = new Set(['#', 'r', '?', 'L', 'u', 'i']);
 // Tiles that stay in the grid (everything else is turned into an object when the level loads).
-const TILES = new Set(['#', 'r', '=', '?', 'L', 'u', 'b', '~', 'R', 'w', 'i', 'p']);
-const CRITTERS = { g: 'grub', d: 'snap', z: 'buzz', Z: 'buzz', e: 'beetle', h: 'frog', q: 'squirrel', m: 'moth' };
-const NPCS = { J: 'juniper', O: 'puddle', Y: 'rook' };
-// Which season makes which tile "active" (ice for water, a solid heap for leaf piles).
-const SEASON_TILE = { '~': 'winter', w: 'winter', p: 'autumn' };
-const TRACK_FOR_STONE = { '1-1': 'bloom', '2-1': 'pond', '3-1': 'orchard' };
+const TILES = new Set(['#', 'r', '=', '?', 'L', 'u', 'b', '~', 'R', 'w', 'i', 'p', '%', 'j']);
+const CRITTERS = { g: 'grub', d: 'snap', z: 'buzz', Z: 'buzz', e: 'beetle', h: 'frog', q: 'squirrel', m: 'moth', c: 'cactus', n: 'slug' };
+const NPCS = { J: 'juniper', O: 'puddle', Y: 'rook', B: 'basil' };
+// Which season makes which tile "active" (ice for water, a solid heap for leaf piles,
+// baked earth for mud, nothing at all for a melted ice wall).
+const SEASON_TILE = { '~': 'winter', w: 'winter', p: 'autumn', '%': 'summer', j: 'summer' };
+const ACTIVE_LOOK = { '~': 'I', w: 'Y', p: 'P', '%': 'D', j: 'J' };
+const TRACK_FOR_STONE = { '1-1': 'bloom', '2-1': 'pond', '3-1': 'orchard', '4-1': 'glass', 'A-1': 'almanac' };
 
 export const SPRING_LETTER = DISTRICTS[1].letter;
 
@@ -90,7 +95,7 @@ export class LevelScene {
           case 'P': start = [x, y]; break;
           case 'o': this.ents.push(new Acorn(x, y)); break;
           case 'G': this.ents.push(new GoldenSeed(x, y, seedIdx, !!had[seedIdx])); seedIdx++; break;
-          case 'f': case 'v': case 'U': deferred.push([x, y, c]); break;
+          case 'f': case 'v': case 'U': case 'V': deferred.push([x, y, c]); break;
           case '^': this.ents.push(new Mushroom(x, y)); break;
           case 'C': { const l = new Lantern(x, y, lanternIdx++); this.lanterns.push(l); this.ents.push(l); break; }
           case 'E': this.bell = new Bell(x, y); this.ents.push(this.bell); break;
@@ -108,7 +113,7 @@ export class LevelScene {
       }
     }
     // Things that need to know where the walls are (vines measure their height, vents their wind column).
-    for (const [x, y, c] of deferred) this.ents.unshift(c === 'U' ? new Vent(x, y, this) : new Soil(x, y, c, this));
+    for (const [x, y, c] of deferred) this.ents.unshift(c === 'U' || c === 'V' ? new Vent(x, y, this, c === 'V' ? 'summer' : 'autumn') : new Soil(x, y, c, this));
     this.computeMasks();
 
     let px = start[0] * T + T / 2, py = (start[1] + 1) * T;
@@ -119,6 +124,13 @@ export class LevelScene {
     }
     if (this.skipTo) { px = this.skipTo; this.skipTo = null; }
     if (this.opts.spawn && !this.spawned) { px = this.opts.spawn.x; py = this.opts.spawn.y; this.spawned = true; }
+    // A skip-ahead or a later lantern can put you past a season stone you haven't picked up yet.
+    // Never leave you stuck without it: the stone comes with you to where you start.
+    for (const e of this.ents) {
+      if (e instanceof StonePickup && !state.data.stones[e.season] && e.x + e.w / 2 < px - T) {
+        e.x = px - e.w / 2; e.y = py - e.h - 6; e.followed = true;
+      }
+    }
     this.player = new Player(px, py);
     const own = this.district?.season;
     if (own && state.data.stones[own]) this.player.setSeason(own, true);
@@ -128,7 +140,7 @@ export class LevelScene {
 
     const theme = this.data.theme;
     const awake = theme === 'square' ? false : !!state.data.cleared[this.district?.boss];
-    this.palBase = makePal(theme, theme === 'square' ? 0.5 : awake ? 0.12 : 0.6);
+    this.palBase = makePal(theme, theme === 'square' ? 0.5 : theme === 'almanac' ? 0.3 : awake ? 0.12 : 0.6);
     this.palVivid = makePal(theme, 0);
     this.camX = clamp(px - W / 2, 0, this.w * T - W);
     this.camY = clamp(py - H * 0.6, -2 * T, Math.max(0, this.h * T - H));
@@ -136,6 +148,8 @@ export class LevelScene {
     if (d.boss === 'pumpkin') this.boss = new Pumpkin(this);
     if (d.boss === 'pike') this.boss = new Pike(this);
     if (d.boss === 'scarecrow') this.boss = new Scarecrow(this);
+    if (d.boss === 'sunmoth') this.boss = new SunMoth(this);
+    this.heat = 0; this.lights = [];
   }
 
   computeMasks() {
@@ -151,14 +165,16 @@ export class LevelScene {
         const s = ['#', 'r'];
         return (same(x, y - 1, s) ? 1 : 0) | (same(x + 1, y, s) ? 2 : 0) | (same(x, y + 1, s) ? 4 : 0) | (same(x - 1, y, s) ? 8 : 0);
       }
-      if (c === '~' || c === 'R' || c === 'p') return y > 0 && t[y - 1][x] === c ? 1 : 0;
+      if (c === '~' || c === 'R' || c === 'p' || c === '%') return y > 0 && t[y - 1][x] === c ? 1 : 0;
       return 0;
     }));
   }
 
   // ---------- seasons acting on the world ----------
   isActive(tx, ty) { return this.act.has(ty * this.w + tx); }
-  winterAt(x, y) { const p = this.player; return p && p.season === 'winter' && !p.dead && dist(p.cx, p.cy, x, y) < p.bubble + 4; }
+  winterAt(x, y) { return this.seasonAt('winter', x, y); }
+  summerAt(x, y) { return this.seasonAt('summer', x, y); }
+  seasonAt(s, x, y) { const p = this.player; return p && p.season === s && !p.dead && dist(p.cx, p.cy, x, y) < p.bubble + 4; }
   updateSeasonTiles(dt) {
     for (const [k, v] of this.act) { if (v - dt <= 0) this.act.delete(k); else this.act.set(k, v - dt); }
     const p = this.player;
@@ -177,7 +193,12 @@ export class LevelScene {
         this.act.set(k, 2.5);
       }
     }
-    if (fresh > 0 && Math.random() < 0.25) sfx(p.season === 'winter' ? 'freeze' : 'rustle');
+    if (fresh > 0 && Math.random() < 0.25) sfx(p.season === 'winter' ? 'freeze' : p.season === 'summer' ? 'melt' : 'rustle');
+    if (fresh > 0 && p.season === 'summer') {
+      for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
+        if (this.tiles[ty][tx] === 'j' && Math.random() < 0.3) this.parts.push({ type: 'steam', x: tx * T + Math.random() * T, y: ty * T + Math.random() * T, vx: 0, vy: -50, life: 0.8, max: 0.8, rot: 0 });
+      }
+    }
   }
   // Ice floes crack and sink a moment after you land on them, unless Winter keeps them frozen.
   updateCracks(dt) {
@@ -206,7 +227,8 @@ export class LevelScene {
     if (ty < 0 || ty >= this.h) return false;
     const c = this.tiles[ty][tx];
     if (SOLID.has(c)) return true;
-    if (c === '~' || c === 'w' || c === 'p') return this.act.has(ty * this.w + tx);
+    if (c === '~' || c === 'w' || c === 'p' || c === '%') return this.act.has(ty * this.w + tx);
+    if (c === 'j') return !this.act.has(ty * this.w + tx);
     return false;
   }
   oneway(tx, ty) {
@@ -234,6 +256,19 @@ export class LevelScene {
     }
     return false;
   }
+  // How deep the feet are in (wet) mud, or -1.
+  inMud(b) {
+    const x0 = Math.floor((b.x + 6) / T), x1 = Math.floor((b.x + b.w - 6) / T);
+    const ty = Math.floor((b.y + b.h - 2) / T);
+    for (let tx = x0; tx <= x1; tx++) {
+      if (this.tiles[ty]?.[tx] !== '%' || this.isActive(tx, ty)) continue;
+      let top = ty;
+      while (top > 0 && this.tiles[top - 1][tx] === '%') top--;
+      return b.y + b.h - top * T - 10;
+    }
+    return -1;
+  }
+  mudSplat(b) { this.burst(b.x + b.w / 2, b.y + b.h - 4, 'mud', 10); sfx('squelch'); }
   touchWall(b, dir) {
     const x = dir > 0 ? b.x + b.w + 1.5 : b.x - 1.5;
     const tx = Math.floor(x / T);
@@ -438,10 +473,12 @@ export class LevelScene {
     if (this.id === '0-2' && unlockOutfit('hat', 'acorn')) toast('New hat for the wardrobe: Acorn cap!');
     const tr = TRACK_FOR_STONE[this.id];
     if (tr && !d.tracks.includes(tr)) d.tracks.push(tr);
-    d.mapNode = LEVEL_ORDER.indexOf(this.id) + 1;
+    if (this.info.district === 5) d.trailNode = ALMANAC_ORDER.indexOf(this.id) + 1;
+    else d.mapNode = LEVEL_ORDER.indexOf(this.id) + 1;
     saveGame();
-    transition(() => setScene(new MapScene()));
+    transition(() => setScene(this.mapScene()));
   }
+  mapScene() { return this.info.district === 5 ? new TrailScene() : new MapScene(); }
   bossDefeated() {
     stopMusic(1.5);
     for (const c of this.critters) if (!c.asleep) c.sleep(this);
@@ -504,7 +541,7 @@ export class LevelScene {
         { label: 'Keep playing', select: () => engine.overlays.pop() },
         { label: 'Settings cabinet', select: () => pushOverlay(new SettingsCabinet()) },
         { label: 'Restart from last lantern', select: () => { engine.overlays.pop(); self.load(); if (self.boss) self.boss.start(self); } },
-        { label: 'Back to the map', select: () => { engine.overlays.pop(); transition(() => setScene(new MapScene())); } },
+        { label: 'Back to the map', select: () => { engine.overlays.pop(); transition(() => setScene(self.mapScene())); } },
       ],
       note: this.info.name,
     }));
@@ -541,12 +578,19 @@ export class LevelScene {
         e.y = ty * T - e.h + 10; e.vy = Math.min(e.vy, 0); e.onGround = true;
       } else if (!e.isFlier || e.asleep) { e.dead = true; this.splash(e); }
     }
+    for (const e of this.critters) {
+      if (e.dead || e.mode === 'carried' || e.isFlier || this.inMud(e) < 6) continue;
+      e.y += 30 * dt; e.vx *= 0.9;
+      if (this.inMud(e) > e.h - 6) { e.dead = true; this.mudSplat(e); }
+    }
 
     if (!p.dead && this.state === 'play') {
       this.critterContacts(dt);
       if (this.touchingThorns(p)) this.hurt();
       for (const e of this.ents) if (e.hurts && !e.dead && overlap(e, p)) { e.dead = true; this.hurt(e.x); }
       if (this.inWater(p)) { this.splash(p); this.loseLife(true); }
+      if (this.inMud(p) > p.h - 10) { this.mudSplat(p); this.loseLife(true); }
+      if (this.data.heatwave) this.updateHeat(dt);
       if (p.y > this.h * T + 40) this.loseLife(true);
     }
     if (this.data.autoscroll && this.state === 'play') this.updateRush(dt);
@@ -555,7 +599,10 @@ export class LevelScene {
     this.critters = this.critters.filter((e) => !e.dead);
 
     const sl = SEASON_LAYERS[this.info.music];
-    if (sl) {
+    if (sl?.multi) {
+      for (const [s, layer] of Object.entries(sl.multi)) setLayer(layer, p.season === s ? 1 : 0);
+      setLayer('hum', p.season ? 0.25 : 1);
+    } else if (sl) {
       const on = p.season === sl.season;
       for (const [k, v] of Object.entries(on ? sl.on : sl.off)) setLayer(k, v);
     }
@@ -581,6 +628,7 @@ export class LevelScene {
       if (this.letterT <= 0) this.ents.push(new LetterPickup(this.boss.x, this.boss.top - 20));
     }
     this.updateCamera(dt);
+    if (this.data.dark) this.updateLights();
     if (this.state === 'clear') { this.clearT += dt; if (this.clearT > 2.2 && !this.clearShown) { this.clearShown = true; this.showClear(); } }
   }
 
@@ -588,8 +636,13 @@ export class LevelScene {
   ambient(dt) {
     const th = this.palVivid.theme;
     if (th === 'square') return;
-    const type = th.startsWith('pond') ? 'snow' : th.startsWith('orchard') ? 'leaf' : 'petal';
+    const type = th === 'almanac' ? ({ winter: 'snow', autumn: 'leaf', summer: 'pollen' }[this.player.season] || 'petal')
+      : th.startsWith('pond') ? 'snow' : th.startsWith('orchard') ? 'leaf' : th.startsWith('green') ? 'pollen' : 'petal';
     const rate = type === 'snow' ? 6 : type === 'leaf' ? 4 : 3;
+    if (type === 'pollen') {
+      if (Math.random() < dt * 5) this.parts.push({ type, x: this.camX + Math.random() * W, y: this.camY + H + 10, vx: 8, vy: -26, life: 9, max: 9, rot: Math.random() * 6, ambient: true });
+      return;
+    }
     if ((this.player.bubble > 40 || this.palBase.vivid || type !== 'petal') && Math.random() < dt * rate) {
       this.parts.push({ type, x: this.camX + Math.random() * W, y: this.camY - 10, vx: type === 'leaf' ? 50 : 15, vy: type === 'snow' ? 40 : 30, life: 7, max: 7, rot: 0, ambient: true });
     }
@@ -617,6 +670,7 @@ export class LevelScene {
         continue;
       }
       if (p.star > 0) { e.sleep(this); sfx('bop'); this.burst(e.cx, e.y, 'spark', 10); continue; }
+      if (e.kind === 'cactus') { this.hurt(e.cx); continue; }
       const prevBottom = p.bottom - p.vy * dt;
       if (p.vy > 0 && prevBottom <= e.y + 16) {
         e.sleep(this); p.y = e.y - p.h; p.bounce(560); sfx('bop');
@@ -669,7 +723,7 @@ export class LevelScene {
         let xo = 0, yo = 0;
         const bump = this.bumps.get(tx + ',' + ty);
         if (bump) yo = -Math.sin((bump / 0.2) * Math.PI) * 9;
-        if (SEASON_TILE[c] && this.isActive(tx, ty)) c = c === '~' ? 'I' : c === 'w' ? 'Y' : 'P';
+        if (SEASON_TILE[c] && this.isActive(tx, ty)) c = ACTIVE_LOOK[c];
         if (c === 'i' && this.cracks.has(ty * this.w + tx)) { c = 'k'; xo = Math.sin(this.time * 60) * 2; }
         drawTile(ctx, c, tx * T - this.camX + xo, ty * T - this.camY + yo, this.masks[ty][tx], Math.floor(hash2(tx, ty) * 3), pal, b);
       }
@@ -704,7 +758,7 @@ export class LevelScene {
       ctx.setLineDash([12, 9]); ctx.lineDashOffset = -this.time * 30;
       this.bubblePath(ctx, cx, cy, R); ctx.stroke();
       ctx.restore();
-      const ORBIT = { spring: ['#f7c2d2', '#fff1f5'], winter: ['#ffffff', '#cfe8fb'], autumn: ['#e0783a', '#f2c14e'] }[p.season] || ['#fff', '#fff'];
+      const ORBIT = { spring: ['#f7c2d2', '#fff1f5'], winter: ['#ffffff', '#cfe8fb'], autumn: ['#e0783a', '#f2c14e'], summer: ['#f2b33d', '#fff3c4'] }[p.season] || ['#fff', '#fff'];
       for (let i = 0; i < 6; i++) {
         const a = this.time * 0.7 + i * 1.047;
         ctx.fillStyle = ORBIT[i % 2];
@@ -716,8 +770,10 @@ export class LevelScene {
       }
     }
 
+    for (const g of this.data.glows || []) drawGlowLamp(ctx, g[0] * T + T / 2 - this.camX, (this.h - 1 - g[1]) * T + T / 2 - this.camY, this.time, engine.boil);
     for (const e of this.ents) if (e.mode !== 'carried') e.draw(ctx, this);
     this.boss?.draw(ctx, this);
+    if (this.data.heatwave) this.drawSunbeams(ctx);
 
     if (this.data.autoscroll) this.drawChaseWall(ctx);
 
@@ -740,6 +796,8 @@ export class LevelScene {
     for (const e of this.ents) if (e.mode === 'carried') e.draw(ctx, this);
 
     for (const q of this.parts) this.drawPart(ctx, q);
+    if (this.data.dark) this.drawDarkness(ctx);
+    if (this.heat > 0.02 && !p.dead) drawThermo(ctx, p.cx - this.camX + 24, p.y - this.camY - 6, this.heat, engine.boil);
     for (const f of this.floaters) text(ctx, f.txt, f.x - this.camX, f.y - this.camY, { size: 24, align: 'center', color: f.color || '#3b2a26', outline: '#fffaf0', alpha: Math.min(1, (1.2 - f.t) * 3) });
     if (this.noHUD) return; // trailer shots: clean picture
     for (const s of this.signs) s.drawBubble(ctx, this);
@@ -769,8 +827,142 @@ export class LevelScene {
     else if (q.type === 'splash') { ctx.fillStyle = '#cfeafa'; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.fill(); }
     else if (q.type === 'bubble') { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.stroke(); }
     else if (q.type === 'rainbow') { ctx.fillStyle = q.c; ctx.translate(x, y); ctx.rotate(q.rot + q.life * 8); ctx.fillRect(-3, -3, 6, 6); }
+    else if (q.type === 'pollen') { ctx.globalAlpha = a * 0.8; ctx.fillStyle = '#fff1a0'; ctx.beginPath(); ctx.arc(x + Math.sin(q.life * 2 + q.rot) * 8, y, 2.4, 0, 7); ctx.fill(); }
+    else if (q.type === 'mud') { ctx.fillStyle = '#6b4a32'; ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); }
+    else if (q.type === 'steam') { ctx.globalAlpha = a * 0.6; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 6 + (1 - a) * 8, 0, 7); ctx.fill(); }
+    else if (q.type === 'ember') { ctx.fillStyle = q.life % 0.3 > 0.15 ? '#f6c040' : '#f28a3a'; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, 7); ctx.fill(); }
+    else if (q.type === 'frost') { ctx.fillStyle = '#e8f6ff'; ctx.translate(x, y); ctx.rotate(q.life * 4); ctx.fillRect(-2.5, -2.5, 5, 5); }
     else if (q.type === 'z') drawZ(ctx, x, y, a);
     ctx.restore();
+  }
+
+  // ---------- Heatwave: sweeping sunbeams; stand in the shade (anything overhead) ----------
+  beamCenters(x0, x1) {
+    const hw = this.data.heatwave;
+    const ph = (((this.time * hw.speed + (hw.start || 0)) % hw.gap) + hw.gap) % hw.gap;
+    const out = [];
+    for (let k = Math.floor((x0 - ph) / hw.gap) - 1; k <= Math.ceil((x1 - ph) / hw.gap) + 1; k++) out.push(ph + k * hw.gap);
+    return out;
+  }
+  shaded(tx, fromTy) {
+    for (let ty = fromTy; ty >= 0; ty--) if (this.solid(tx, ty) || this.oneway(tx, ty)) return true;
+    return false;
+  }
+  inSun(x, y) {
+    const hw = this.data.heatwave;
+    const tx = Math.floor(x / T);
+    for (const c of this.beamCenters(x - hw.width, x + hw.width)) {
+      if (Math.abs(x - c) < hw.width / 2) return !this.shaded(tx, Math.floor(y / T));
+    }
+    return false;
+  }
+  updateHeat(dt) {
+    const p = this.player, hw = this.data.heatwave;
+    const sun = !p.dead && p.inv <= 0 && p.star <= 0 && this.inSun(p.cx, p.y + 4);
+    if (sun) {
+      this.heat += (dt / hw.burn) * (p.season === 'winter' ? 0.45 : 1);
+      if (Math.random() < dt * 14) this.parts.push({ type: 'ember', x: p.cx + (Math.random() - 0.5) * 24, y: p.y + 10, vx: 0, vy: -70, life: 0.5, max: 0.5, rot: 0 });
+    } else this.heat = Math.max(0, this.heat - dt / 0.9);
+    if (this.heat >= 1) { this.heat = 0.3; sfx('sizzle'); this.hurt(); }
+    // The sun bakes any mud it shines on.
+    for (const c of this.beamCenters(this.camX - hw.width, this.camX + W + hw.width)) {
+      for (let tx = Math.floor((c - hw.width / 2) / T); tx <= Math.floor((c + hw.width / 2) / T); tx++) {
+        if (tx < 0 || tx >= this.w) continue;
+        for (let ty = 0; ty < this.h; ty++) {
+          if (this.tiles[ty][tx] === '%') { const k = ty * this.w + tx; this.act.set(k, Math.max(this.act.get(k) || 0, 0.7)); break; }
+          if (this.solid(tx, ty) || this.oneway(tx, ty)) break;
+        }
+      }
+    }
+  }
+  drawSunbeams(ctx) {
+    const hw = this.data.heatwave;
+    ctx.save();
+    for (const c of this.beamCenters(this.camX - hw.width, this.camX + W + hw.width)) {
+      const x0 = c - hw.width / 2, x1 = c + hw.width / 2;
+      for (let tx = Math.floor(x0 / T); tx <= Math.floor(x1 / T); tx++) {
+        const l = Math.max(tx * T, x0), r = Math.min((tx + 1) * T, x1);
+        if (r <= l) continue;
+        let stop = this.h;
+        for (let ty = 0; ty < this.h; ty++) if (this.solid(tx, ty) || this.oneway(tx, ty)) { stop = ty; break; }
+        const yb = stop * T - this.camY;
+        const edge = Math.min(1, Math.min(l - x0, x1 - r) / 40 + 0.45);
+        const g = ctx.createLinearGradient(0, 0, 0, Math.max(1, yb));
+        g.addColorStop(0, 'rgba(255,236,150,0.05)'); g.addColorStop(1, `rgba(255,210,80,${0.36 * edge})`);
+        ctx.fillStyle = g;
+        ctx.fillRect(l - this.camX, 0, r - l, Math.max(0, yb));
+        ctx.fillStyle = `rgba(255,180,50,${0.55 * edge})`;
+        ctx.fillRect(l - this.camX, yb - 4, r - l, 4);
+      }
+      ctx.globalAlpha = 0.7; ctx.fillStyle = '#fff6c8';
+      for (let i = 0; i < 6; i++) {
+        const yy = (this.time * 40 + i * 97 + Math.abs(c)) % H;
+        ctx.beginPath(); ctx.arc(c - this.camX + Math.sin(yy * 0.03 + i) * hw.width * 0.4, yy, 2, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  // ---------- dark rooms: only what's lit can be seen ----------
+  updateLights() {
+    const p = this.player, L = [];
+    const summer = p.season === 'summer' && !p.dead;
+    L.push({ x: p.cx, y: p.cy, r: summer ? Math.max(84, p.bubble * 1.15) : 84 });
+    for (const l of this.lanterns) L.push({ x: l.x + 14, y: l.y + l.h - 46, r: l.lit ? 160 : 50 });
+    for (const e of this.ents) {
+      if (e.light) { const li = e.light(); if (li) L.push(li); }
+    }
+    if (this.bell) L.push({ x: this.bell.px, y: this.bell.y + this.bell.h - 200, r: 140 });
+    if (this.boss?.light) { const li = this.boss.light(); if (li) L.push(li); }
+    for (const s of this.data.glows || []) L.push({ x: s[0] * T + T / 2, y: (this.h - 1 - s[1]) * T + T / 2, r: s[2] || 120 });
+    this.lights = L;
+  }
+  lightAt(x, y) {
+    let best = 0;
+    for (const l of this.lights) { const d = Math.hypot(l.x - x, l.y - y); if (d < l.r) best = Math.max(best, Math.min(1, (1 - d / l.r) * 2.2)); }
+    return best;
+  }
+  drawDarkness(ctx) {
+    const k = engine.k;
+    if (!this.darkCv || this.darkCv.width !== Math.ceil(W * k)) {
+      this.darkCv = document.createElement('canvas');
+      this.darkCv.width = Math.ceil(W * k); this.darkCv.height = Math.ceil(H * k);
+    }
+    const d = this.darkCv.getContext('2d');
+    d.setTransform(k, 0, 0, k, 0, 0);
+    d.globalCompositeOperation = 'source-over';
+    d.clearRect(0, 0, W, H);
+    d.fillStyle = 'rgba(20,16,34,0.95)'; d.fillRect(0, 0, W, H);
+    d.globalCompositeOperation = 'destination-out';
+    for (const l of this.lights) {
+      const x = l.x - this.camX, y = l.y - this.camY;
+      if (x < -l.r || x > W + l.r || y < -l.r || y > H + l.r) continue;
+      const g = d.createRadialGradient(x, y, l.r * 0.3, x, y, l.r);
+      g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      d.fillStyle = g; d.fillRect(x - l.r, y - l.r, l.r * 2, l.r * 2);
+    }
+    ctx.drawImage(this.darkCv, 0, 0, W, H);
+    const p = this.player;
+    if (p.season === 'summer' && !p.dead && p.bubble > 20) {
+      ctx.save(); ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = 0.5;
+      const g = ctx.createRadialGradient(p.cx - this.camX, p.cy - this.camY, 10, p.cx - this.camX, p.cy - this.camY, p.bubble);
+      g.addColorStop(0, '#ffd774'); g.addColorStop(1, 'rgba(255,215,116,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+    // Shadow slugs' eyes glint faintly in the dark, so you know something's there.
+    for (const e of this.critters) {
+      if (e.kind !== 'slug' || e.asleep) continue;
+      const a = 1 - this.lightAt(e.cx, e.y + e.h / 2);
+      if (a < 0.1) continue;
+      ctx.save(); ctx.globalAlpha = a * (0.55 + Math.sin(this.time * 3 + e.seed) * 0.2); ctx.fillStyle = '#d9f7a0';
+      ctx.beginPath();
+      ctx.arc(e.cx - this.camX + e.facing * 6, e.y - this.camY + 2, 2.4, 0, 7);
+      ctx.arc(e.cx - this.camX + e.facing * 13, e.y - this.camY + 4, 2.4, 0, 7);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   drawHUD(ctx) {

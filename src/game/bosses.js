@@ -7,11 +7,13 @@ import { drawVent, drawPike, drawScarecrow, drawCrow, drawBurrow, drawStarbloom,
 import { input } from '../core/input.js';
 import { text } from '../art/ink.js';
 import { fmt } from '../ui/ui.js';
+import { drawHeatVent } from '../art/critters3.js';
 
 // ---------------- gust vent (Autumn) ----------------
 export class Vent {
-  constructor(tx, row, L) {
-    this.cx = tx * T + T / 2; this.base = (row + 1) * T; this.t = 0; this.active = false;
+  // season 'autumn' = a gust vent, 'summer' = a heat grate (rising hot air).
+  constructor(tx, row, L, season = 'autumn') {
+    this.cx = tx * T + T / 2; this.base = (row + 1) * T; this.t = 0; this.active = false; this.season = season;
     let r = row - 1, n = 0;
     while (n < 8 && r >= 0 && !L.solid(tx, r)) { n++; r--; }
     this.h = n * T + 30;
@@ -20,7 +22,7 @@ export class Vent {
     this.t += dt;
     const p = L.player;
     // Vents wake up whenever Autumn is active nearby.
-    this.active = p.season === 'autumn' && !p.dead && Math.abs(p.cx - this.cx) < 360 && p.cy > this.base - this.h - 360 && p.cy < this.base + 200;
+    this.active = p.season === this.season && !p.dead && Math.abs(p.cx - this.cx) < 360 && p.cy > this.base - this.h - 360 && p.cy < this.base + 200;
     if (!this.active) return;
     if (Math.abs(p.cx - this.cx) < 34 && p.bottom <= this.base + 4 && p.bottom > this.base - this.h) {
       p.vy = Math.max(p.vy - 3900 * dt, -660);
@@ -30,10 +32,11 @@ export class Vent {
         p.x += (this.cx - p.cx) * Math.min(1, dt * 6);
       }
       p.onGround = false; p.coyote = 0; p.bounceHold = 0.12; p.inGust = 0.1;
-      if (Math.random() < dt * 20) L.parts.push({ type: 'leaf', x: this.cx + (Math.random() - 0.5) * 40, y: p.bottom, vx: 0, vy: -260, life: 0.8, max: 0.8, rot: 0 });
+      if (Math.random() < dt * 20) L.parts.push({ type: this.season === 'summer' ? 'ember' : 'leaf', x: this.cx + (Math.random() - 0.5) * 40, y: p.bottom, vx: 0, vy: -260, life: 0.8, max: 0.8, rot: 0 });
     }
   }
-  draw(ctx, L) { drawVent(ctx, this.cx - L.camX, this.base - L.camY, this.active, this.t, engine.boil, this.h); }
+  draw(ctx, L) { (this.season === 'summer' ? drawHeatVent : drawVent)(ctx, this.cx - L.camX, this.base - L.camY, this.active, this.t, engine.boil, this.h); }
+  light() { return this.season === 'summer' ? { x: this.cx, y: this.base - 20, r: this.active ? 110 : 60 } : null; }
 }
 
 // ---------------- Old Pike (Millpond Reach boss) ----------------
@@ -227,6 +230,7 @@ export class Burrow {
     this.near = !p.dead && Math.abs(p.cx - this.cx) < 30 && Math.abs(p.bottom - this.base) < 12 && p.onGround;
     if (this.near && input.pressed('up') && L.state === 'play') L.useBurrow(this);
   }
+  light() { return { x: this.cx, y: this.base - 20, r: 70 }; }
   draw(ctx, L) {
     drawBurrow(ctx, this.cx - L.camX, this.base - L.camY, { boil: engine.boil, t: this.t, glint: !this.exit });
     if (this.near) text(ctx, fmt('{up}') + (this.exit ? ' Leave' : ' Peek inside'), this.cx - L.camX, this.base - L.camY - 58, { size: 18, align: 'center', outline: '#fffaf0', ui: true });
@@ -236,5 +240,6 @@ export class Burrow {
 export class Starbloom {
   constructor(tx, row) { this.x = tx * T + 6; this.y = row * T + 4; this.w = 36; this.h = 40; this.t = 0; this.dead = false; }
   update(dt, L) { this.t += dt; if (overlap(this, L.player) && !L.player.dead) { this.dead = true; L.gotStarbloom(this.x + 18, this.y + 20); } }
+  light() { return { x: this.x + 18, y: this.y + 20, r: 130 }; }
   draw(ctx, L) { drawStarbloom(ctx, this.x + 18 - L.camX, this.y + 22 - L.camY + Math.sin(this.t * 2.5) * 4, this.t, engine.boil); }
 }

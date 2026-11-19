@@ -71,6 +71,16 @@ function scenery(ctx, pal, off, base, boil) {
       if (r < 0.6) appleTree(ctx, x, base, pal, rng, r);
       else if (r < 0.8) haystack(ctx, x, base, pal, rng);
       else fence(ctx, x, base, pal, rng);
+    } else if (th === 'green' || th === 'greenboss') {
+      if (((i % 5) + 5) % 5 === 2) glasshouse(ctx, x, base, pal, rng);
+      else if (r < 0.5) palm(ctx, x, base, pal, rng, r);
+      else cactusPot(ctx, x, base, pal, rng, r);
+    } else if (th === 'almanac') {
+      const k = ((i % 4) + 4) % 4;
+      if (k === 0) tree(ctx, x, base, pal, rng, r);
+      else if (k === 1) pine(ctx, x, base, { ...pal, leaf: '#7d9a8c', grass: '#eef3f9' }, rng, r);
+      else if (k === 2) appleTree(ctx, x, base, { ...pal, leaf: '#d9662b', flower2: '#f2c14e' }, rng, r);
+      else sunflower(ctx, x, base, pal, rng, r);
     } else {
       if (r < 0.55) tree(ctx, x, base, pal, rng, r);
       else bigFlower(ctx, x, base, pal, rng, r);
@@ -161,4 +171,43 @@ function bigFlower(ctx, x, base, pal, rng, r) {
     shape(ctx, ellipse(x + Math.cos(ang) * 14, base - h + Math.sin(ang) * 14, 11, 8, 10, ang), { fill: c, rng, lw: 1.8, wob: 0.8 });
   }
   shape(ctx, ellipse(x, base - h, 9, 9, 10), { fill: shade(pal.flower2, -0.1), rng, lw: 1.8 });
+}
+
+function glasshouse(ctx, x, base, pal, rng) {
+  ctx.save(); ctx.globalAlpha = 0.85;
+  shape(ctx, [[x - 70, base + 30], [x - 70, base - 70], [x, base - 130], [x + 70, base - 70], [x + 70, base + 30]], { fill: pal.glass, rng, lw: 2.4, step: 20 });
+  ctx.restore();
+  for (const dx of [-35, 0, 35]) line(ctx, [[x + dx, base + 30], [x + dx, base - (dx === 0 ? 128 : 100)]], { rng, lw: 2, stroke: pal.woodDark });
+  line(ctx, [[x - 70, base - 30], [x + 70, base - 30]], { rng, lw: 2, stroke: pal.woodDark });
+  line(ctx, [[x - 50, base - 20], [x - 40, base - 60], [x - 30, base - 40]], { rng, lw: 3, stroke: pal.leaf });
+  dot(ctx, x + 30, base - 50, 6, pal.flower1);
+  ctx.save(); ctx.globalAlpha = 0.6; line(ctx, [[x - 50, base - 80], [x - 20, base - 110]], { rng, lw: 4, stroke: '#ffffff' }); ctx.restore();
+}
+function palm(ctx, x, base, pal, rng, r) {
+  const h = 100 + r * 50;
+  shape(ctx, [[x - 22, base + 20], [x - 18, base - 10], [x + 18, base - 10], [x + 22, base + 20]], { fill: pal.dirt, rng, lw: 2.2 });
+  line(ctx, [[x, base - 10], [x + 4, base - h * 0.5], [x - 2, base - h]], { rng, stroke: pal.trunk, lw: 6 });
+  for (let k = 0; k < 5; k++) {
+    const a = -Math.PI / 2 + (k - 2) * 0.6;
+    const ex = x - 2 + Math.cos(a) * 60, ey = base - h + Math.sin(a) * 30 + 26;
+    shape(ctx, [[x - 2, base - h], [(x + ex) / 2, Math.min(base - h, ey) - 14], [ex, ey], [(x + ex) / 2, ey - 2]], { fill: pal.leaf, rng, lw: 2, step: 12 });
+  }
+}
+function cactusPot(ctx, x, base, pal, rng, r) {
+  shape(ctx, [[x - 20, base + 20], [x - 16, base - 14], [x + 16, base - 14], [x + 20, base + 20]], { fill: pal.dirt, rng, lw: 2.2 });
+  const h = 50 + r * 40;
+  shape(ctx, rrect(x - 10, base - 14 - h, 20, h, 10), { fill: '#6faa5a', rng, lw: 2.2 });
+  shape(ctx, rrect(x + 10, base - 14 - h * 0.7, 18, 10, 5), { fill: '#6faa5a', rng, lw: 2 });
+  shape(ctx, rrect(x + 18, base - 14 - h * 0.95, 10, 26, 5), { fill: '#6faa5a', rng, lw: 2 });
+  dot(ctx, x, base - 16 - h, 5, pal.flower1);
+}
+function sunflower(ctx, x, base, pal, rng, r) {
+  const h = 90 + r * 50;
+  line(ctx, [[x, base + 20], [x + 5, base - h * 0.5], [x, base - h]], { rng, stroke: pal.grassDark, lw: 4 });
+  shape(ctx, ellipse(x + 14, base - h * 0.4, 14, 6, 10, -0.5), { fill: pal.leaf, rng, lw: 1.8 });
+  for (let a = 0; a < 10; a++) {
+    const ang = (a / 10) * Math.PI * 2;
+    shape(ctx, ellipse(x + Math.cos(ang) * 16, base - h + Math.sin(ang) * 16, 9, 5, 8, ang), { fill: '#f6c445', rng, lw: 1.6 });
+  }
+  shape(ctx, ellipse(x, base - h, 11, 11, 12), { fill: '#7a5230', rng, lw: 1.8 });
 }

@@ -58,7 +58,11 @@ export class Player {
     const sprint = input.down('sprint');
     let dir = (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0);
     if (this.lock > 0) { this.lock -= dt; dir = this.lockDir; }
-    const maxV = (sprint ? 370 : 240) * (this.star > 0 ? 1.25 : 1);
+    // Mud: sticky and slow. You can hop out once; stay in too long and you sink.
+    const mudDepth = world.inMud ? world.inMud(this) : -1;
+    this.inMudNow = mudDepth >= 0;
+    if (this.onGround) this.mudHops = 0;
+    const maxV = (sprint ? 370 : 240) * (this.star > 0 ? 1.25 : 1) * (this.inMudNow ? 0.3 : 1);
     // Frozen water and ice floes are slippery: slow to start, slow to stop.
     const ice = this.onGround && world.onIce?.(this);
     if (dir) {
@@ -81,6 +85,10 @@ export class Player {
     if (this.gliding) this.vy = Math.min(this.vy, 120);
     // Running water in a waterfall pushes you down.
     if (world.inWaterfall?.(this)) this.vy = Math.min(this.vy + 1600 * dt, 520);
+    if (this.inMudNow) {
+      if (this.vy > 32) { if (this.vy > 300) world.mudSplat?.(this); this.vy = 32; }
+      this.gliding = false;
+    }
 
     this.wall = 0;
     if (!this.onGround && this.vy > -80 && dir && world.touchWall(this, dir)) {
@@ -95,6 +103,9 @@ export class Player {
         this.vy = -(JUMP_V + Math.abs(this.vx) * 0.15);
         this.coyote = 0; this.buffer = 0; this.squash = -0.18; this.onGround = false;
         sfx('jump');
+      } else if (this.inMudNow && (this.mudHops || 0) < 1) {
+        this.vy = -660; this.mudHops = (this.mudHops || 0) + 1; this.buffer = 0; this.squash = -0.18;
+        sfx('squelch');
       } else {
         const wd = world.touchWall(this, 1) ? 1 : world.touchWall(this, -1) ? -1 : 0;
         if (wd) {

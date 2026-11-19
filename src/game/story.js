@@ -64,9 +64,31 @@ export const DISTRICTS = {
     rewards: { hat: 'beret', furniture: 'scarecrow_stand', tracks: ['orchard'] },
     rewardLines: ['New hat: Leaf beret', 'New furniture: Scarecrow coat-stand', 'New record: Copperleaf Drift'],
   },
+  4: {
+    name: 'Sunglass Greenhouse', season: 'summer', boss: '4-B', npc: 'basil', theme: 'green',
+    stoneLines: [
+      { who: 'stone', text: 'You found the Summer stone!' },
+      { who: 'basil', text: "Ohh, warm. Lovely. Switch to Summer with {next} or {prev} and you'll bake that sticky mud hard as a plant pot." },
+      { who: 'basil', text: 'It melts ice walls, lights up the dark corners, and the old heat grates will puff you right up into the rafters.' },
+    ],
+    bossIntro: [
+      { who: 'basil', text: "That's the Sunlamp Moth. It used to sleep on the big lamp... until it got cold and grew itself a shell of ice." },
+      { who: 'basil', text: "It can't resist a bit of light. Switch to Summer and it'll come swooping. Dodge it, keep it in your warmth, and the ice will melt." },
+      { who: 'basil', text: "Once it's dizzy and shell-less, give it a gentle bop. Three should do. Mind the frost flakes." },
+    ],
+    letterKey: 'summer',
+    letter:
+      'Dear Marigold,\n' +
+      'The summer we built the greenhouse, you said the best gardens are planted by people who will never sit in their shade. I did not understand you then.\n' +
+      'The apprentice is so like you. If I let the year turn, the clock will need a new keeper, and I think that is what I have truly been afraid of.\n' +
+      'I will be waiting in the Hollow Oak, at the far end of the Almanac Trail.',
+    awakeTitle: 'The Greenhouse is in bloom!',
+    rewards: { hat: 'sunhat', furniture: 'sunlamp', tracks: ['glass'] },
+    rewardLines: ['New hat: Sun hat', 'New furniture: Sunlamp Moth lamp', 'New record: Greenhouse Noon', 'The Almanac Trail is open!'],
+  },
 };
 
-export const SEASON_DISTRICT = { spring: 1, winter: 2, autumn: 3 };
+export const SEASON_DISTRICT = { spring: 1, winter: 2, autumn: 3, summer: 4 };
 
 // What friends say when you walk up to them.
 export function npcLines(who, d, talks) {
@@ -93,6 +115,17 @@ export function npcLines(who, d, talks) {
       { who, text: 'It makes a terrible mess of the air and no mess at all on the ground, which is somehow worse.' },
       { who, text: 'My crows saw something shining orange near the old cider barrels. Go and see!' },
     ] : [{ who, text: 'The shiny orange thing is past the first pits. My crows are rarely wrong about shiny things.' }];
+  }
+  if (who === 'basil') {
+    if (d.stones.summer) return [{ who, text: 'Mmm, sunshine. Did you know the shadow slugs hate being looked at? Light them up and they freeze right on the spot. Well, nearly.' }];
+    return talks === 1 ? [
+      { who, text: '...zzz... Oh! A visitor. Basil. I keep the greenhouse. Or I did, before it got so terribly, endlessly hot.' },
+      { who, text: "It's stuck in summer, but a wrong sort of summer. Muddy, steamy, and the lamps have all gone dark." },
+      { who, text: 'Something golden fell into the big flowerpot up ahead. Fetch it, would you? I need a little lie-down.' },
+    ] : [{ who, text: '...the golden thing is in the big flowerpot, just past the cactus hedgehogs. Do not jump on them. Ouch.' }];
+  }
+  if (who === 'thimble') {
+    return [{ who, text: '...' }];
   }
   return [];
 }

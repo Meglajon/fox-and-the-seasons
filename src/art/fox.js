@@ -22,6 +22,7 @@ export const HATS = [
   { id: 'bobble', name: 'Bobble hat', price: 35 },
   { id: 'straw', name: 'Straw hat', price: 35 },
   { id: 'beret', name: 'Leaf beret', how: 'Wake up Copperleaf Orchard' },
+  { id: 'sunhat', name: 'Sun hat', how: 'Wake up the Sunglass Greenhouse' },
   { id: 'keeper', name: "Clockkeeper's cap", how: 'Coming in the next build' },
 ];
 export const EXTRAS = [
@@ -197,6 +198,11 @@ export function drawHat(ctx, id, rng) {
   } else if (id === 'beret') {
     shape(ctx, ellipse(15, -46, 12.5, 4.8, 14, -0.15), { fill: '#6fae5a', rng, lw: 2 });
     line(ctx, [[15, -51], [17, -55]], { rng, lw: 2 });
+  } else if (id === 'sunhat') {
+    shape(ctx, ellipse(17, -43, 21, 5, 18), { fill: '#f2d27a', rng, lw: 2 });
+    shape(ctx, ellipse(17, -49, 9.5, 7, 14), { fill: '#f2d27a', rng, lw: 2 });
+    line(ctx, [[8, -45], [26, -45]], { rng, stroke: '#5aa86a', lw: 2.6 });
+    dot(ctx, 25, -47, 3, '#f28a5a'); dot(ctx, 25, -47, 1.2, '#f6d040');
   } else if (id === 'keeper') {
     shape(ctx, ellipse(17, -46, 10.5, 5.5, 14), { fill: '#3d4a7a', rng, lw: 2 });
     shape(ctx, rrect(21, -45, 14, 3.5, 1.5), { fill: '#2b345a', rng, lw: 1.6, wash: false });

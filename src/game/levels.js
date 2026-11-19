@@ -13,6 +13,7 @@ class B {
   fill(x0, x1, y0, y1, c) { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) this.set(x, y, c); return this; }
   ground(x0, x1, top = 2) { return this.fill(x0, x1, 0, top - 1, '#'); }
   water(x0, x1, top = 2, c = '~') { return this.fill(x0, x1, 0, top - 1, c); }
+  mud(x0, x1, top = 2) { return this.fill(x0, x1, 0, top - 1, '%'); }
   roof(x0, x1, top) { this.fill(x0, x1, 0, top - 2, 'r'); return this.fill(x0, x1, top - 1, top - 1, '#'); }
   pit(x0, x1) { return this.fill(x0, x1, 0, this.h - 1, '.'); }
   plat(x, y, w) { for (let i = 0; i < w; i++) this.set(x + i, y, '='); return this; }
@@ -529,6 +530,129 @@ function l3b() {
 }
 
 
+// ======================= District 4: Sunglass Greenhouse (Summer) =======================
+// %=mud j=ice wall V=heat grate c=cactus hedgehog n=shadow slug B=Basil K=Summer stone
+
+function l41() {
+  const b = new B(170);
+  b.ground(0, 18); b.put(2, 2, 'P'); b.put(7, 2, 'B');
+  b.sign(10, 2, 'Cactus hedgehogs are far too prickly to jump on! Hop over them, or kick a sleepy critter at them.');
+  b.put(15, 2, 'c');
+  b.mud(19, 20);
+  b.ground(21, 40); b.put(25, 2, 'g'); b.put(30, 2, 'c'); b.acorns(24, 5, 3);
+  b.fill(34, 34, 2, 2, 'r'); b.put(34, 3, 'K');
+  b.sign(37, 2, 'Switch to Summer with {next}: sticky mud bakes solid, and ice walls melt away!');
+  b.mud(41, 48); b.acorns(42, 4, 6);
+  b.ground(49, 74); b.put(51, 2, 'C');
+  b.fill(56, 56, 2, 7, 'j');
+  b.put(60, 2, 'c');
+  b.sign(63, 2, 'Heat grates puff warm air when Summer is near. Ride them up!');
+  b.put(66, 2, 'V'); b.plat(64, 9, 5); b.put(66, 10, 'G'); b.acorns(64, 10, 2); b.acorns(67, 10, 2);
+  b.put(71, 5, 'L');
+  b.mud(75, 80);
+  b.ground(81, 104); b.put(84, 2, 'g'); b.put(88, 2, 'c'); b.put(92, 2, 'c');
+  b.fill(99, 99, 2, 4, 'j'); b.fill(101, 101, 2, 4, 'j'); b.fill(99, 101, 5, 5, 'j'); b.put(100, 2, 'G');
+  b.put(103, 2, 'C');
+  b.mud(105, 112); b.ground(108, 108);
+  b.ground(113, 169);
+  b.put(118, 2, 'c'); b.put(122, 2, 'g');
+  b.put(126, 2, 'V'); b.plat(124, 9, 4); b.acorns(124, 10, 4);
+  b.fill(136, 136, 2, 12, 'j');
+  b.put(144, 2, 'V'); b.plat(142, 8, 4); b.put(144, 9, 'G');
+  b.put(150, 2, 'c');
+  b.arc(152, 5, 4);
+  b.put(160, 2, 'E');
+  b.fill(169, 169, 2, 12, 'r');
+  return b.done({ id: '4-1', name: 'Greenhouse Gate', theme: 'green', stone: 'summer' });
+}
+
+function l42() {
+  // Dark potting sheds: lanterns, glowing lamps, shadow slugs. Summer lights the way.
+  const b = new B(180, 14);
+  b.ground(0, 14); b.put(2, 2, 'P');
+  b.sign(5, 2, "It's dark in the potting sheds! Summer lights the way, and shadow slugs can't hide from it.");
+  b.put(11, 2, 'n');
+  b.mud(15, 18);
+  b.ground(19, 40); b.put(24, 2, 'n'); b.put(30, 2, 'c');
+  b.fill(34, 34, 2, 7, 'j'); b.put(37, 2, 'C');
+  b.ground(44, 63); b.plat(46, 5, 3); b.put(47, 6, 'G');
+  b.put(52, 2, 'V'); b.plat(50, 10, 5); b.put(51, 11, 'H'); b.acorns(53, 11, 2);
+  b.put(58, 2, 'n');
+  b.mud(64, 68);
+  b.ground(69, 95); b.put(71, 2, 'C');
+  b.fill(74, 84, 6, 13, 'r'); b.put(79, 2, 'n'); b.put(81, 3, 'G'); b.fill(84, 84, 2, 5, 'j');
+  b.put(90, 2, 'c');
+  b.ground(99, 117); b.put(101, 2, 'C');
+  b.put(106, 2, 'V'); b.plat(104, 9, 4); b.acorns(104, 10, 4);
+  b.put(112, 2, 'n');
+  b.mud(118, 122);
+  b.ground(123, 179);
+  b.put(126, 5, 'L'); b.put(130, 2, 'n'); b.put(134, 2, 'n');
+  b.fill(140, 140, 2, 13, 'j');
+  b.put(146, 2, 'V'); b.plat(148, 8, 4); b.put(150, 9, 'G');
+  b.put(160, 2, 'c');
+  b.put(168, 2, 'E');
+  b.fill(179, 179, 2, 13, 'r');
+  return b.done({ id: '4-2', name: 'Potting Sheds', theme: 'green', secret: 'S4', dark: true, glows: [[20, 9, 110], [60, 9, 110], [110, 8, 110], [156, 9, 110]] });
+}
+
+function l43() {
+  // Every season, one after another.
+  const b = new B(190, 15);
+  b.ground(0, 12); b.put(2, 2, 'P');
+  b.sign(4, 2, 'This greenhouse needs every season. Switch quickly with {next} and {prev}!');
+  b.put(10, 2, 'f'); b.fill(12, 20, 0, 7, '#');
+  b.water(21, 32);
+  b.ground(33, 48); b.put(35, 2, 'C'); b.put(40, 2, 'c');
+  // Freeze the waterfall, climb it, melt the ice wall at the top, then glide away.
+  b.fill(44, 44, 5, 12, 'r'); b.fill(47, 48, 2, 12, 'w');
+  b.fill(49, 62, 0, 12, '#'); b.fill(50, 62, 14, 14, 'r'); b.fill(54, 54, 13, 13, 'j');
+  b.acorns(57, 13, 4);
+  b.water(63, 78); b.put(70, 8, 'G'); b.arc(66, 9, 7);
+  b.ground(79, 99); b.put(81, 2, 'C');
+  b.put(86, 2, 'U'); b.plat(84, 10, 4); b.put(85, 11, 'G');
+  b.put(92, 2, 'g');
+  b.put(97, 2, 'f');
+  b.fill(100, 110, 0, 7, '#'); b.fill(106, 106, 8, 14, 'j'); b.acorns(101, 9, 3);
+  b.fill(111, 118, 0, 1, 'p');
+  b.ground(119, 140); b.put(121, 2, 'C'); b.put(126, 2, 'c'); b.put(130, 2, 'c'); b.put(134, 2, 'h');
+  b.mud(141, 150);
+  b.ground(151, 189);
+  b.put(156, 2, 'V'); b.plat(154, 10, 4); b.put(155, 11, 'G'); b.put(157, 11, 'L');
+  b.arc(162, 5, 5);
+  b.put(178, 2, 'E');
+  b.fill(189, 189, 2, 14, 'r');
+  return b.done({ id: '4-3', name: 'Four-Season House', theme: 'green' });
+}
+
+function l44() {
+  // Heatwave: sunbeams sweep across. Hide under the awnings until they pass.
+  const b = new B(200);
+  b.ground(0, 199); b.put(2, 2, 'P'); b.plat(0, 5, 5);
+  b.sign(4, 2, 'Heatwave! When a sunbeam sweeps past, hide under something. Winter keeps you a little cooler.');
+  for (const x of [12, 23, 35, 47, 58, 70, 82, 94, 106, 118, 130, 142, 154, 166, 178]) b.plat(x, 5, 3);
+  b.mud(28, 31); b.mud(64, 67); b.mud(124, 128); b.mud(160, 163);
+  for (const x of [20, 43, 76, 100, 137, 171]) b.put(x, 2, 'c');
+  b.fill(40, 40, 2, 3, 'r');
+  b.put(60, 2, 'C'); b.put(120, 2, 'C');
+  b.put(48, 6, 'G'); b.put(95, 2, '^'); b.put(95, 9, 'G'); b.put(155, 6, 'G');
+  b.acorns(13, 6, 2); b.acorns(71, 6, 2); b.acorns(131, 6, 2);
+  b.put(113, 5, 'L');
+  b.put(192, 2, 'E');
+  b.fill(199, 199, 2, 12, 'r');
+  return b.done({ id: '4-4', name: 'Heatwave', theme: 'green', heatwave: { speed: -120, gap: 1100, width: 220, burn: 0.6, start: 1000 } });
+}
+
+function l4b() {
+  const b = new B(24, 13);
+  b.ground(0, 23);
+  b.fill(0, 0, 2, 12, 'r'); b.fill(23, 23, 2, 12, 'r');
+  b.put(3, 2, 'P');
+  b.plat(3, 6, 3); b.plat(18, 6, 3);
+  return b.done({ id: '4-B', name: 'The Sunlamp Moth', theme: 'greenboss', boss: 'sunmoth', dark: true });
+}
+
+
 // ======================= Secret burrows (one-screen puzzles with a Starbloom) =======================
 // X = the way back out, * = Starbloom (invincible for 10 seconds back in the level)
 function room(theme) {
@@ -573,13 +697,219 @@ function s3() {
   return b.done({ id: 'S3', name: 'Secret: Gusty Burrow', theme: 'orchard' });
 }
 
+function s4() {
+  // Potting Sheds: bake the mud, melt the ice wall, then ride the heat grate up (Summer).
+  const b = room(); b.ground(0, 4); b.mud(5, 10); b.ground(11, 19);
+  b.fill(13, 13, 2, 11, 'j');
+  b.put(16, 2, 'V'); b.plat(15, 9, 4); b.put(17, 10, '*');
+  b.acorns(6, 4, 4);
+  return b.done({ id: 'S4', name: 'Secret: Sunny Nook', theme: 'green' });
+}
+
+const BUILDERS_TRAIL = {};
+// ======================= The Almanac Trail: 20 tricky levels that mix all four seasons =======================
+// Each level is a run of hand-made "set pieces" joined by short stretches of ground. Every set piece
+// starts and ends at ground level, so they can be combined freely (tools/trailtest.js plays each one).
+// seed = where a golden seed goes when the level asks for one there ([x offset, row]).
+export const PIECES = {
+  // --- one season ---
+  pond: { w: (o) => o.n || 8, build(b, x, o) { b.water(x, x + (o.n || 8) - 1); }, seed: (o) => [Math.floor((o.n || 8) / 2), 5] },
+  mud: { w: (o) => o.n || 8, build(b, x, o) { b.mud(x, x + (o.n || 8) - 1); }, seed: (o) => [Math.floor((o.n || 8) / 2), 4] },
+  piles: { w: (o) => o.n || 8, build(b, x, o) { b.fill(x, x + (o.n || 8) - 1, 0, 1, 'p'); }, seed: (o) => [Math.floor((o.n || 8) / 2), 6] },
+  icewall: { w: () => 3, build(b, x) { b.ground(x, x + 2); b.fill(x + 1, x + 1, 2, 14, 'j'); }, seed: () => [2, 5] },
+  flowerwall: {
+    w: () => 9,
+    build(b, x) { b.ground(x, x + 3); b.put(x + 1, 2, 'f'); b.fill(x + 4, x + 7, 0, 7, '#'); b.ground(x + 8, x + 8); },
+    seed: () => [5, 11],
+  },
+  vine: {
+    w: () => 8,
+    build(b, x) { b.ground(x, x + 2); b.put(x + 2, 2, 'v'); b.fill(x + 3, x + 6, 0, 7, '#'); b.ground(x + 7, x + 7); },
+    seed: () => [5, 9],
+  },
+  thornflower: {
+    w: () => 12,
+    build(b, x) { b.ground(x, x + 11); b.put(x + 1, 2, 'f'); b.fill(x + 3, x + 9, 2, 2, 'b'); },
+    seed: () => [6, 8],
+  },
+  falls: {
+    // Freeze the waterfall, wall-jump up between it and the rock, then take the steps down.
+    w: () => 17,
+    build(b, x) {
+      b.ground(x, x + 5); b.fill(x + 1, x + 1, 5, 12, 'r'); b.fill(x + 4, x + 5, 2, 12, 'w');
+      b.fill(x + 6, x + 12, 0, 12, '#'); b.fill(x + 13, x + 14, 0, 8, '#'); b.fill(x + 15, x + 16, 0, 4, '#');
+    },
+    seed: () => [9, 13],
+  },
+  ventglide: {
+    // A gust vent (Autumn) lifts you high; glide over the pit.
+    w: (o) => 4 + (o.n || 12),
+    build(b, x, o) { b.ground(x, x + 3); b.put(x + 2, 2, 'U'); b.pit(x + 4, x + 3 + (o.n || 12)); },
+    seed: (o) => [4 + Math.floor((o.n || 12) / 2), 7],
+  },
+  heatwall: {
+    // A heat grate (Summer) puffs you up and over a tall wall.
+    w: () => 9,
+    build(b, x) { b.ground(x, x + 4); b.put(x + 3, 2, 'V'); b.fill(x + 5, x + 7, 0, 8, '#'); b.ground(x + 8, x + 8); },
+    seed: () => [6, 10],
+  },
+  cactustunnel: {
+    // A low tunnel full of cactus hedgehogs: freeze them (Winter) and kick them out of the way.
+    w: () => 13,
+    build(b, x) { b.ground(x, x + 12); b.fill(x + 1, x + 11, 4, 14, 'r'); for (const k of [4, 7, 10]) b.put(x + k, 2, 'c'); },
+    seed: () => [6, 3],
+  },
+  floes: {
+    // Rushing water with ice floes that crack, unless Winter keeps them frozen.
+    w: (o) => o.n || 12,
+    build(b, x, o) {
+      const n = o.n || 12;
+      b.water(x, x + n - 1, 2, 'R');
+      for (let k = 1; k < n - 1; k += 3) b.fill(x + k, Math.min(x + k + 1, x + n - 2), 1, 1, 'i');
+    },
+    seed: (o) => [Math.floor((o.n || 12) / 2), 5],
+  },
+  // --- several seasons ---
+  meltglide: {
+    // Winter: climb the frozen falls. Summer: melt the ice wall in the tunnel. Autumn: glide over the water.
+    w: () => 36,
+    build(b, x) {
+      b.ground(x, x + 5); b.fill(x + 1, x + 1, 5, 12, 'r'); b.fill(x + 4, x + 5, 2, 12, 'w');
+      b.fill(x + 6, x + 19, 0, 12, '#'); b.fill(x + 7, x + 19, 14, 14, 'r'); b.fill(x + 11, x + 11, 13, 13, 'j');
+      b.water(x + 20, x + 35);
+    },
+    seed: () => [26, 9],
+  },
+  iceonice: {
+    // Winter: freeze the pond. Summer: melt the ice wall standing in it. Winter again before the ice thaws!
+    w: (o) => o.n || 12,
+    build(b, x, o) { const n = o.n || 12; b.water(x, x + n - 1); b.fill(x + Math.floor(n / 2) - 1, x + Math.floor(n / 2) - 1, 2, 14, 'j'); },
+    seed: (o) => [Math.floor((o.n || 12) / 2) + 2, 4],
+  },
+  mudflower: {
+    // Summer: bake the mud. Spring: bounce over the wall.
+    w: () => 14,
+    build(b, x) { b.mud(x, x + 5); b.ground(x + 6, x + 8); b.put(x + 6, 2, 'f'); b.fill(x + 9, x + 12, 0, 7, '#'); b.ground(x + 13, x + 13); },
+    seed: () => [10, 11],
+  },
+  pilevent: {
+    // Autumn: leaves fill the pit. Summer: ride the heat grate over the wall.
+    w: () => 15,
+    build(b, x) { b.fill(x, x + 5, 0, 1, 'p'); b.ground(x + 6, x + 10); b.put(x + 9, 2, 'V'); b.fill(x + 11, x + 13, 0, 8, '#'); b.ground(x + 14, x + 14); },
+    seed: () => [3, 6],
+  },
+  quickmix: {
+    // Water, a leaf pit and mud, one after another: Winter, Autumn, Summer ({next} each time).
+    w: () => 14,
+    build(b, x) { b.water(x, x + 3); b.ground(x + 4, x + 4); b.fill(x + 5, x + 8, 0, 1, 'p'); b.ground(x + 9, x + 9); b.mud(x + 10, x + 13); },
+    seed: () => [7, 5],
+  },
+  cliffmeltglide: {
+    // Spring: bounce up the cliff. Summer: melt the ice at the edge. Autumn: glide across the gap.
+    w: () => 24,
+    build(b, x) {
+      b.ground(x, x + 3); b.put(x + 1, 2, 'f'); b.fill(x + 4, x + 9, 0, 8, '#'); b.fill(x + 8, x + 8, 9, 14, 'j');
+      b.pit(x + 10, x + 21); b.ground(x + 22, x + 23);
+    },
+    seed: () => [15, 7],
+  },
+  vineice: {
+    // Spring: climb the vine. Summer: melt the ice on top.
+    w: () => 9,
+    build(b, x) { b.ground(x, x + 2); b.put(x + 2, 2, 'v'); b.fill(x + 3, x + 7, 0, 7, '#'); b.fill(x + 5, x + 5, 8, 14, 'j'); b.ground(x + 8, x + 8); },
+    seed: () => [6, 9],
+  },
+};
+
+const TRAIL_CRITTERS = ['g', 'e', 'h', 'c', 'q', 'g', 'c', 'e'];
+function trail(id, name, pieces, meta = {}) {
+  const gap = meta.gap || 5;
+  let w = 10 + 16;
+  for (const [k, o = {}] of pieces) w += PIECES[k].w(o) + gap;
+  const b = new B(w, 15);
+  b.ground(0, 9); b.put(2, 2, 'P');
+  if (meta.sign) b.sign(5, 2, meta.sign);
+  if (meta.heatwave) b.plat(0, 5, 6);
+  let x = 10;
+  const at = [];
+  const seeds = meta.seeds || [0, Math.floor(pieces.length / 2), pieces.length - 1];
+  const lanterns = [Math.floor(pieces.length / 3), Math.floor((pieces.length * 2) / 3)];
+  pieces.forEach(([k, o = {}], i) => {
+    // A short stretch of ground first (with a critter, a lantern, or shade in a heatwave).
+    b.ground(x, x + gap - 1);
+    if (meta.heatwave) b.plat(x, 5, Math.min(gap, 3));
+    const cr = (meta.critters || TRAIL_CRITTERS)[(i + id.length) % (meta.critters || TRAIL_CRITTERS).length];
+    if (lanterns.includes(i) && i > 0) b.put(x + 1, 2, 'C');
+    else if (cr && i > 0 && gap >= 4 && !meta.noCritters) b.put(x + gap - 2, 2, cr);
+    if (i % 2 === 0) b.acorns(x + 1, 4, 2);
+    x += gap;
+    const P = PIECES[k];
+    P.build(b, x, o);
+    if (seeds.includes(i)) { const [sx, sy] = P.seed(o); b.put(x + sx, sy, 'G'); }
+    at.push([k, x, o]);
+    x += P.w(o);
+  });
+  b.ground(x, w - 1);
+  if (meta.heatwave) for (let k = x; k < w - 6; k += 6) b.plat(k, 5, 3);
+  b.arc(x + 2, 5, 5);
+  b.put(x + 10, 2, 'E');
+  b.fill(w - 1, w - 1, 2, 14, 'r');
+  return b.done({ id, name, theme: 'almanac', pieces: at, ...meta });
+}
+
+const HW = { speed: -110, gap: 1250, width: 200, burn: 0.85, start: 1100 };
+const TRAIL = [
+  ['A-1', 'First Frost Path', [['pond', { n: 6 }], ['mud', { n: 6 }], ['piles', { n: 6 }], ['flowerwall'], ['icewall']],
+    { sign: 'The Almanac Trail! Every season, in any order. Switch with {next} and {prev}.' }],
+  ['A-2', 'Puddle Hop', [['quickmix'], ['pond', { n: 10 }], ['vine'], ['mud', { n: 8 }]],
+    { sign: 'Water, leaves, then mud: Winter, Autumn, Summer. Each one is just a press of {next}!' }],
+  ['A-3', 'Mill Run', [['falls'], ['piles', { n: 8 }], ['heatwall'], ['pond', { n: 8 }]]],
+  ['A-4', 'Bramble & Bake', [['thornflower'], ['mudflower'], ['ventglide', { n: 10 }], ['icewall']]],
+  ['A-5', 'Lantern Lane', [['mud', { n: 6 }], ['flowerwall'], ['pond', { n: 8 }], ['heatwall'], ['cactustunnel']],
+    { dark: true, critters: ['n', 'g', 'n', 'c'], sign: 'Dark again! Summer lights the way, but you might need the other seasons too.' }],
+  ['A-6', 'Meltwater', [['meltglide'], ['quickmix'], ['floes', { n: 10 }]]],
+  ['A-7', 'Upside Orchard', [['ventglide', { n: 12 }], ['pilevent'], ['vineice'], ['pond', { n: 10 }]]],
+  ['A-8', 'The Long Thaw', [['pond', { n: 8 }], ['mud', { n: 6 }], ['piles', { n: 6 }], ['floes', { n: 10 }], ['quickmix'], ['pond', { n: 10 }]],
+    { autoscroll: 115, gap: 4, noCritters: true }],
+  ['A-9', 'Sun & Snow', [['iceonice'], ['mudflower'], ['falls']],
+    { sign: 'An ice wall in the pond! Freeze, melt, then freeze again before the ice thaws.' }],
+  ['A-10', 'Night Garden', [['vine'], ['cactustunnel'], ['quickmix'], ['heatwall'], ['mud', { n: 10 }]],
+    { dark: true, critters: ['n', 'n', 'g', 'n'] }],
+  ['A-11', 'Heat Shimmer', [['mud', { n: 8 }], ['icewall'], ['pond', { n: 10 }], ['piles', { n: 8 }], ['quickmix']],
+    { heatwave: HW, critters: ['c', null, 'g'] }],
+  ['A-12', 'Cliffside', [['cliffmeltglide'], ['falls'], ['ventglide', { n: 12 }]]],
+  ['A-13', 'Floe Fields', [['floes', { n: 14 }], ['iceonice'], ['floes', { n: 12 }], ['quickmix']]],
+  ['A-14', 'Four Corners', [['flowerwall'], ['meltglide'], ['pilevent'], ['mudflower']]],
+  ['A-15', 'Dark Mill', [['falls'], ['iceonice'], ['cactustunnel'], ['vineice']],
+    { dark: true, critters: ['n', 'c', 'n'] }],
+  ['A-16', 'Hurry, Seasons!', [['quickmix'], ['pond', { n: 10 }], ['mud', { n: 10 }], ['piles', { n: 10 }], ['quickmix'], ['floes', { n: 12 }]],
+    { autoscroll: 130, gap: 4, noCritters: true }],
+  ['A-17', 'Thawing Heights', [['meltglide'], ['cliffmeltglide'], ['vineice'], ['iceonice', { n: 14 }]]],
+  ['A-18', 'High Noon', [['mudflower'], ['quickmix'], ['iceonice'], ['piles', { n: 10 }], ['mud', { n: 10 }]],
+    { heatwave: { ...HW, speed: -130, burn: 0.75 }, critters: ['c', 'g', null] }],
+  ['A-19', 'Midnight Almanac', [['meltglide'], ['quickmix'], ['pilevent'], ['floes', { n: 12 }]],
+    { dark: true, critters: ['n', 'c', 'n'], glowsEvery: 12 }],
+  ['A-20', "The Year's End", [['cliffmeltglide'], ['iceonice', { n: 14 }], ['meltglide'], ['quickmix'], ['falls'], ['ventglide', { n: 14 }]],
+    { sign: 'The last stretch before the Hollow Oak. Good luck, little fox!' }],
+];
+for (const [id, name, pieces, meta] of TRAIL) BUILDERS_TRAIL[id] = () => {
+  const lv = trail(id, name, pieces, meta);
+  // Dim little lamps along dark levels so there's always something to aim for.
+  if (meta?.dark) { lv.glows = []; for (let gx = 14; gx < lv.w; gx += meta.glowsEvery || 16) lv.glows.push([gx, 10, 90]); }
+  return lv;
+};
+export const ALMANAC_ORDER = TRAIL.map((t) => t[0]);
+export const ALMANAC_INFO = Object.fromEntries(TRAIL.map(([id, name]) => [id, { name, district: 5, music: 'almanac', seeds: 3 }]));
+
 const BUILDERS = {
   '0-1': l01, '0-2': l02, '1-1': l11, '1-2': l12, '1-3': l13, '1-4': l14, '1-B': l1b,
   '2-1': l21, '2-2': l22, '2-3': l23, '2-4': l24, '2-B': l2b,
   '3-1': l31, '3-2': l32, '3-3': l33, '3-4': l34, '3-B': l3b,
-  S0: s0, S1: s1, S2: s2, S3: s3,
+  '4-1': l41, '4-2': l42, '4-3': l43, '4-4': l44, '4-B': l4b,
+  S0: s0, S1: s1, S2: s2, S3: s3, S4: s4,
 };
-export const LEVEL_ORDER = ['0-1', '0-2', '1-1', '1-2', '1-3', '1-4', '1-B', '2-1', '2-2', '2-3', '2-4', '2-B', '3-1', '3-2', '3-3', '3-4', '3-B'];
+Object.assign(BUILDERS, BUILDERS_TRAIL);
+export const LEVEL_ORDER = ['0-1', '0-2', '1-1', '1-2', '1-3', '1-4', '1-B', '2-1', '2-2', '2-3', '2-4', '2-B', '3-1', '3-2', '3-3', '3-4', '3-B', '4-1', '4-2', '4-3', '4-4', '4-B'];
 export const LEVEL_INFO = {
   '0-1': { name: 'Morning in Foxhollows', district: 0, music: 'map', seeds: 3 },
   '0-2': { name: 'Rooftop Ramble', district: 0, music: 'map', seeds: 3 },
@@ -598,10 +928,17 @@ export const LEVEL_INFO = {
   '3-3': { name: 'Cider Press', district: 3, music: 'orchard', seeds: 3 },
   '3-4': { name: 'Leaf Storm', district: 3, music: 'orchard', seeds: 3 },
   '3-B': { name: 'The Prize Scarecrow', district: 3, music: 'boss', seeds: 0 },
+  '4-1': { name: 'Greenhouse Gate', district: 4, music: 'glass', seeds: 3 },
+  '4-2': { name: 'Potting Sheds', district: 4, music: 'glass', seeds: 3 },
+  '4-3': { name: 'Four-Season House', district: 4, music: 'glass', seeds: 3 },
+  '4-4': { name: 'Heatwave', district: 4, music: 'glass', seeds: 3 },
+  '4-B': { name: 'The Sunlamp Moth', district: 4, music: 'boss', seeds: 0 },
   S0: { name: 'Secret: Chimney Cubby', district: 0, music: 'map', seeds: 0, secret: true },
   S1: { name: 'Secret: Petal Hollow', district: 1, music: 'bloom', seeds: 0, secret: true },
   S2: { name: 'Secret: Icy Grotto', district: 2, music: 'pond', seeds: 0, secret: true },
   S3: { name: 'Secret: Gusty Burrow', district: 3, music: 'orchard', seeds: 0, secret: true },
+  S4: { name: 'Secret: Sunny Nook', district: 4, music: 'glass', seeds: 0, secret: true },
 };
+Object.assign(LEVEL_INFO, ALMANAC_INFO);
 const built = {};
 export function getLevel(id) { return built[id] || (built[id] = BUILDERS[id]()); }

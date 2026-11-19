@@ -3,7 +3,7 @@ import { audio, inst, drums } from './audio.js';
 
 export const TRACK_NAMES = {
   title: 'A Year Turns', den: 'The Den', map: 'Foxhollows, Paused', bloom: 'Bloomwood', boss: 'Grumpy Critters',
-  pond: 'Millpond Under Glass', orchard: 'Copperleaf Drift',
+  pond: 'Millpond Under Glass', orchard: 'Copperleaf Drift', glass: 'Greenhouse Noon', almanac: 'The Almanac Trail',
 };
 
 // In each district's track, switching to that district's season fades in its own instruments.
@@ -11,6 +11,9 @@ export const SEASON_LAYERS = {
   bloom: { season: 'spring', on: { lead: 0.9, birds: 1, shaker: 0.8, hum: 0.2 }, off: { lead: 0, birds: 0, shaker: 0, hum: 1 } },
   pond: { season: 'winter', on: { lead: 1, chimes: 1, hum: 0.25 }, off: { lead: 0, chimes: 0, hum: 1 } },
   orchard: { season: 'autumn', on: { lead: 1, wind: 1, hum: 0.25 }, off: { lead: 0, wind: 0, hum: 1 } },
+  glass: { season: 'summer', on: { lead: 1, shaker: 1, hum: 0.25 }, off: { lead: 0, shaker: 0.25, hum: 1 } },
+  // The Almanac Trail: each season brings in its own lead instrument.
+  almanac: { multi: { spring: 'spr', winter: 'win', autumn: 'aut', summer: 'sum' } },
 };
 
 const EIGHTHS = [0, 2, 4, 6, 8, 10, 12, 14];
@@ -165,6 +168,64 @@ export const TRACKS = {
     },
   },
 
+  // 7b. Sunglass Greenhouse: warm pads and a plucked synth; Summer adds a bright lead and shakers.
+  glass: {
+    bpm: 90, swing: 0.14, bars: 8,
+    layers: {
+      keys: { v: 0.85 }, bass: { v: 0.95 }, drums: { v: 0.8, drum: true }, pad: { v: 0.75 }, hum: { v: 1 },
+      lead: { v: 0 }, shaker: { v: 0.25, drum: true },
+    },
+    chords: [
+      { n: [57, 61, 64, 68], b: 45 }, { n: [54, 57, 61, 64], b: 42 }, { n: [50, 54, 57, 61], b: 38 },
+      { n: [52, 56, 59, 62], b: 40, n2: [52, 56, 59, 64] }, { n: [57, 61, 64, 68], b: 45 }, { n: [56, 59, 62, 66], b: 44 },
+      { n: [54, 57, 61, 64], b: 42 }, { n: [52, 56, 59, 62], b: 40 },
+    ],
+    comp: { layer: 'keys', inst: 'pluck', hits: [[0, 2, 0.6], [3, 2, 0.45], [6, 2, 0.55], [8, 2, 0.5], [11, 2, 0.45], [14, 2, 0.4]] },
+    bass: { layer: 'bass', hits: [[0, 0, 6, 0.9], [6, 7, 2, 0.5], [8, 0, 4, 0.7], [12, 12, 2, 0.5], [14, 7, 2, 0.5]] },
+    pad: { layer: 'pad' },
+    drums: { layer: 'drums', kick: [0, 8, 11], snare: [4, 12], sv: 0.42, hat: EIGHTHS, hv: 0.35, rim: [14] },
+    mel: [
+      { layer: 'lead', inst: 'kalimba', notes: GLASS_MEL() },
+      { layer: 'hum', inst: 'ep', minLen: 4, v: 0.5, notes: GLASS_MEL() },
+    ],
+    extra(s, t, L) {
+      const st = s & 15;
+      drums.shaker(L.shaker, t, st % 4 === 2 ? 1 : st % 2 === 0 ? 0.6 : 0.35);
+    },
+  },
+
+  // 7c. The Almanac Trail: a bit of every district's theme, one lead per season.
+  almanac: {
+    bpm: 82, swing: 0.16, bars: 8,
+    layers: {
+      keys: { v: 0.85 }, bass: { v: 0.95 }, drums: { v: 0.8, drum: true }, pad: { v: 0.7 }, hum: { v: 1 },
+      spr: { v: 0 }, win: { v: 0 }, aut: { v: 0 }, sum: { v: 0 }, lead: { v: 0 },
+    },
+    chords: [
+      { n: [55, 59, 62, 66], b: 43 }, { n: [52, 55, 59, 62], b: 40 }, { n: [48, 52, 55, 59], b: 36 },
+      { n: [50, 54, 57, 60], b: 38, n2: [50, 54, 57, 62] }, { n: [55, 59, 62, 66], b: 43 }, { n: [57, 60, 64, 67], b: 45 },
+      { n: [48, 52, 55, 59], b: 36 }, { n: [50, 54, 57, 60], b: 38 },
+    ],
+    comp: { layer: 'keys', inst: 'ep', hits: [[0, 6, 0.55], [6, 2, 0.35], [10, 4, 0.45]] },
+    bass: { layer: 'bass', hits: [[0, 0, 6, 0.9], [6, 7, 2, 0.5], [10, 0, 4, 0.7], [14, 12, 2, 0.45]] },
+    pad: { layer: 'pad' },
+    drums: { layer: 'drums', kick: [0, 7, 10], snare: [4, 12], sv: 0.45, hat: EIGHTHS, hv: 0.38, ghost: true },
+    mel: [
+      { layer: 'spr', inst: 'kalimba', notes: ALMANAC_MEL() },
+      { layer: 'win', inst: 'musicbox', notes: ALMANAC_MEL() },
+      { layer: 'aut', inst: 'nylon', notes: ALMANAC_MEL() },
+      { layer: 'sum', inst: 'pluck', notes: ALMANAC_MEL() },
+      { layer: 'hum', inst: 'piano', minLen: 4, v: 0.5, notes: ALMANAC_MEL() },
+    ],
+    extra(s, t, L) {
+      const bar = s >> 4, st = s & 15;
+      if (st % 2 === 0) drums.shaker(L.sum, t, st % 4 === 2 ? 0.8 : 0.5);
+      if (bar % 4 === 1 && st === 6) inst.bird(L.spr, t);
+      if (bar % 2 === 1 && st === 9) [96, 93, 98].forEach((m, i) => inst.musicbox(L.win, t + i * 0.09, m - 12, 0.4, 0.5));
+      if (bar % 4 === 0 && st === 0) drums.noiseSweep(L.aut, t, 1.6, 400, 1400, 0.4);
+    },
+  },
+
   // 5. Mini-boss — Grumpy Critters
   boss: {
     bpm: 96, swing: 0.05, bars: 4,
@@ -187,6 +248,30 @@ export const TRACKS = {
   },
 };
 
+function GLASS_MEL() {
+  return [
+    [0, 0, 76, 2], [0, 2, 80, 2], [0, 4, 81, 4], [0, 8, 80, 2], [0, 10, 76, 2], [0, 12, 73, 4],
+    [1, 0, 73, 2], [1, 2, 76, 2], [1, 4, 78, 6], [1, 10, 76, 2], [1, 12, 73, 4],
+    [2, 0, 74, 2], [2, 2, 78, 2], [2, 4, 81, 4], [2, 8, 85, 4], [2, 12, 83, 4],
+    [3, 0, 80, 6], [3, 6, 78, 2], [3, 8, 76, 8],
+    [4, 0, 76, 2], [4, 2, 80, 2], [4, 4, 83, 4], [4, 8, 85, 2], [4, 10, 83, 2], [4, 12, 81, 4],
+    [5, 0, 80, 4], [5, 4, 78, 4], [5, 8, 74, 8],
+    [6, 0, 73, 2], [6, 2, 76, 2], [6, 4, 81, 4], [6, 8, 80, 4], [6, 12, 78, 4],
+    [7, 0, 76, 8], [7, 8, 71, 4], [7, 12, 74, 4],
+  ];
+}
+function ALMANAC_MEL() {
+  return [
+    [0, 0, 74, 2], [0, 2, 78, 2], [0, 4, 79, 4], [0, 8, 81, 2], [0, 10, 79, 2], [0, 12, 78, 4],
+    [1, 0, 76, 4], [1, 4, 74, 2], [1, 6, 71, 2], [1, 8, 74, 8],
+    [2, 0, 72, 2], [2, 2, 76, 2], [2, 4, 79, 4], [2, 8, 84, 4], [2, 12, 83, 4],
+    [3, 0, 81, 6], [3, 6, 78, 2], [3, 8, 74, 8],
+    [4, 0, 79, 2], [4, 2, 83, 2], [4, 4, 86, 4], [4, 8, 83, 4], [4, 12, 81, 4],
+    [5, 0, 79, 4], [5, 4, 81, 4], [5, 8, 76, 8],
+    [6, 0, 76, 2], [6, 2, 79, 2], [6, 4, 84, 4], [6, 8, 83, 2], [6, 10, 81, 2], [6, 12, 79, 4],
+    [7, 0, 78, 8], [7, 8, 74, 4], [7, 12, 81, 4],
+  ];
+}
 function POND_MEL() {
   return [
     [0, 0, 81, 4], [0, 4, 77, 4], [0, 8, 76, 4], [0, 12, 74, 4], [1, 0, 77, 6], [1, 6, 76, 2], [1, 8, 74, 8],

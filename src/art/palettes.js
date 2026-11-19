@@ -36,12 +36,29 @@ BASE.orchard = {
   leaf: '#d9662b', trunk: '#6e4a30', sun: '#fff0c8', cloud: '#fff6e6', blossom: '#e88a3a',
 };
 BASE.orchardboss = { ...BASE.orchard, sky1: '#e9a46b', sky2: '#fbe3c4', far: '#c98c56' };
+// Sunglass Greenhouse: noon gold, glasshouse greens, terracotta pots.
+BASE.green = {
+  sky1: '#f4d27e', sky2: '#fff5d8', far: '#a9cf9c', near: '#7fb57f', grass: '#7cc06a', grassDark: '#4f9147',
+  dirt: '#c27b52', dirtDark: '#8e5236', stone: '#d9cfba', stoneDark: '#a1937b', wood: '#c48f5a', woodDark: '#865b33',
+  bramble: '#6a7a3a', flower1: '#f28a5a', flower2: '#f6d040', house: '#e6f3e2', house2: '#c7e2c6', roof: '#8fc5b4',
+  leaf: '#5aa86a', trunk: '#7a5a3a', sun: '#fff6c0', cloud: '#fffaf0', blossom: '#f6c45a',
+  extra: { mud: '#7d5a3e', mudDark: '#573d29', glass: '#cfeee4' },
+};
+BASE.greenboss = { ...BASE.green, sky1: '#e8b56a', sky2: '#fbe6c0', far: '#8fb98a' };
+// The Almanac Trail: every season at once, a soft dawn sky.
+BASE.almanac = {
+  sky1: '#c9c3ea', sky2: '#fdeee2', far: '#b9c9a8', near: '#93b48a', grass: '#8cc06c', grassDark: '#5d9447',
+  dirt: '#a97852', dirtDark: '#7a5137', stone: '#d2cbbd', stoneDark: '#9a9180', wood: '#c09060', woodDark: '#805a36',
+  bramble: '#74507a', flower1: '#f4a3bf', flower2: '#f6d36b', house: '#efe0c8', house2: '#d9c3a3', roof: '#a8604d',
+  leaf: '#7cb05a', trunk: '#7d5a3e', sun: '#fff4d8', cloud: '#ffffff', blossom: '#f7c2d2',
+};
 // Water, ice and leaf colours shared by every district.
 for (const k in BASE) {
   Object.assign(BASE[k], {
     water: BASE[k].water || '#7fb6cf', waterDark: '#4f86a6', ice: '#dcf0fb', iceDark: '#8fc0e0',
-    pile: '#d9662b', pile2: '#f2a541', ...(BASE[k].extra || {}),
+    pile: '#d9662b', pile2: '#f2a541', mud: '#7d5a3e', mudDark: '#573d29', glass: '#cfeee4', ...(BASE[k].extra || {}),
   });
+  delete BASE[k].extra;
 }
 
 const cache = {};

@@ -60,6 +60,7 @@ export const FURN = {
   pumpkin_lamp: { name: 'Pumpkin lamp', layer: 'floor', w: 1, src: 'trophy', how: 'Beat the Overgrown Pumpkin' },
   pike_bench: { name: 'Frozen Pike bench', layer: 'floor', w: 2, src: 'trophy', how: 'Beat Old Pike' },
   scarecrow_stand: { name: 'Scarecrow coat-stand', layer: 'floor', w: 1, src: 'trophy', how: 'Beat the Prize Scarecrow' },
+  sunlamp: { name: 'Sunlamp Moth lamp', layer: 'floor', w: 1, src: 'trophy', how: 'Beat the Sunlamp Moth' },
 };
 export const SETS = [
   ['cozy', 'Cozy set'], ['garden', 'Garden set'], ['harvest', 'Harvest set'], ['frost', 'Frost set'],
@@ -356,6 +357,14 @@ export function drawFurniture(ctx, id, x, floorY, flip, boil, season, wallY = WA
       shape(ctx, ellipse(cx, y - 100, 16, 4, 10), { fill: '#d9b45a', rng, lw: 2 });
       shape(ctx, [[cx - 9, y - 100], [cx - 7, y - 112], [cx + 7, y - 112], [cx + 9, y - 100]], { fill: '#d9b45a', rng, lw: 2, step: 6 });
       shape(ctx, ellipse(cx, y - 3, 14, 4, 10), { fill: '#6e4a30', rng, lw: 2 });
+      break;
+    case 'sunlamp':
+      ctx.save(); ctx.globalAlpha = 0.25; dot(ctx, cx, y - 70, 40, '#ffe08a'); ctx.restore();
+      line(ctx, [[cx, y - 2], [cx, y - 60]], { rng, lw: 4, stroke: '#6b4a30' });
+      shape(ctx, ellipse(cx, y - 4, 14, 4, 10), { fill: '#6b4a30', rng, lw: 2 });
+      shape(ctx, [[cx - 16, y - 58], [cx + 16, y - 58], [cx + 10, y - 80], [cx - 10, y - 80]], { fill: '#f6d36b', rng, lw: 2, step: 8 });
+      for (const s of [-1, 1]) shape(ctx, ellipse(cx + s * 16, y - 88, 13, 9, 12, s * -0.4), { fill: '#f2b33d', rng, lw: 2 });
+      shape(ctx, ellipse(cx, y - 88, 5, 11, 10), { fill: '#b98a5e', rng, lw: 1.8 });
       break;
     // ---- wall items (centred on wy) ----
     case 'clock':

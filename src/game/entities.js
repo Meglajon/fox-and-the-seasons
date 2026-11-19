@@ -16,6 +16,7 @@ const G = 2200;
 
 import { Critter } from './critter.js';
 import { drawPuddle, drawRook } from '../art/critters2.js';
+import { drawBasil } from '../art/critters3.js';
 export { Critter, SeedShot, AcornDrop } from './critter.js';
 
 // ---------------- pickups ----------------
@@ -47,12 +48,14 @@ export class Berry {
 export class GoldenSeed {
   constructor(tx, row, idx, had) { this.x = tx * T + 6; this.y = row * T + 4; this.w = 36; this.h = 40; this.idx = idx; this.had = had; this.t = 0; this.dead = false; }
   update(dt, L) { this.t += dt; if (overlap(this, L.player) && !L.player.dead) { this.dead = true; L.gainSeed(this.idx, this.x + 18, this.y + 20); } }
+  light() { return { x: this.x + 18, y: this.y + 20, r: 64 }; }
   draw(ctx, L) { drawSeed(ctx, this.x + 18 - L.camX, this.y + 22 - L.camY + Math.sin(this.t * 2.5) * 4, { ghost: this.had, t: this.t, boil: engine.boil }); }
 }
 
 export class StonePickup {
   constructor(tx, row, season = 'spring') { this.season = season; this.x = tx * T + 8; this.y = row * T + 4; this.w = 32; this.h = 40; this.t = 0; this.dead = false; }
   update(dt, L) { this.t += dt; if (overlap(this, L.player) && !L.player.dead) { this.dead = true; L.gotStone(this.season, this.x + 16, this.y + 20); } }
+  light() { return { x: this.x + 16, y: this.y + 20, r: 120 }; }
   draw(ctx, L) { drawStoneGem(ctx, this.x + 16 - L.camX, this.y + 20 - L.camY + Math.sin(this.t * 2) * 4, this.season, { t: this.t, boil: engine.boil, scale: 1.3 }); }
 }
 
@@ -63,6 +66,7 @@ export class LetterPickup {
     if (this.vy !== 0) { this.vy += 900 * dt; this.y += this.vy * dt; const floor = (L.h - 2) * T - 70; if (this.y > floor) { this.y = floor; this.vy = 0; } }
     if (this.t > 0.6 && overlap(this, L.player) && !L.player.dead) { this.dead = true; L.gotLetter(); }
   }
+  light() { return { x: this.x + 20, y: this.y + 20, r: 110 }; }
   draw(ctx, L) { drawLetter(ctx, this.x + 20 - L.camX, this.y + 20 - L.camY, this.t, engine.boil); }
 }
 
@@ -151,6 +155,7 @@ export class Soil {
 
 export class Sign {
   constructor(tx, row, txt) { this.cx = tx * T + T / 2; this.base = (row + 1) * T; this.txt = txt; this.show = 0; }
+  light() { return { x: this.cx, y: this.base - 30, r: 56 }; }
   update(dt, L) {
     const near = Math.abs(L.player.cx - this.cx) < 70 && Math.abs(L.player.bottom - this.base) < 70;
     this.show = clamp(this.show + (near ? dt : -dt) * 5, 0, 1);
@@ -183,7 +188,7 @@ export class NPC {
     if (near && !p.dead && (!this.talked || input.pressed('up'))) { this.talked = true; L.talk(this.who); }
   }
   draw(ctx, L) {
-    const draw = { juniper: drawJuniper, puddle: drawPuddle, rook: drawRook }[this.who] || drawJuniper;
+    const draw = { juniper: drawJuniper, puddle: drawPuddle, rook: drawRook, basil: drawBasil }[this.who] || drawJuniper;
     draw(ctx, this.cx - L.camX, this.base - L.camY, { facing: this.facing, t: this.t, boil: engine.boil });
     if (this.near && this.talked) text(ctx, fmt('{up}') + ' Talk', this.cx - L.camX, this.base - L.camY - 112, { size: 18, align: 'center', ui: true });
   }

@@ -7,6 +7,8 @@ import { shape, line, ellipse, rrect, rngFor, dot, text, panel } from '../art/in
 import { drawFox } from '../art/fox.js';
 import { drawSeed, drawPaw, drawAcorn, drawPumpkin } from '../art/critters.js';
 import { drawPike, drawScarecrow } from '../art/critters2.js';
+import { drawSunMoth } from '../art/critters3.js';
+import { TrailScene } from './trail.js';
 import { SEASON_COLOR } from '../art/palettes.js';
 import { LEVEL_INFO } from '../game/levels.js';
 import { LevelScene } from '../game/level.js';
@@ -26,7 +28,9 @@ export const NODES = [
   { id: '2-4', x: 642, y: 80 }, { id: '2-B', x: 560, y: 116 },
   { id: '3-1', x: 452, y: 150 }, { id: '3-2', x: 360, y: 118 }, { id: '3-3', x: 268, y: 152 },
   { id: '3-4', x: 182, y: 112 }, { id: '3-B', x: 96, y: 160 },
-  { id: '4-1', x: 470, y: 262, label: 'Sunglass Greenhouse', locked: true },
+  { id: '4-1', x: 462, y: 222 }, { id: '4-2', x: 534, y: 254 }, { id: '4-3', x: 606, y: 214 },
+  { id: '4-4', x: 678, y: 252 }, { id: '4-B', x: 752, y: 216 },
+  { id: 'trail', x: 470, y: 66, label: 'The Almanac Trail', trail: true },
 ];
 
 export class MapScene {
@@ -44,7 +48,8 @@ export class MapScene {
     const d = state.data;
     if (i <= 1) return true;
     const n = NODES[i];
-    if (n.locked) return !!d.cleared['3-B'];
+    if (n.locked) return false;
+    if (n.trail) return !!d.cleared['4-B'];
     return !!d.cleared[NODES[i - 1].id];
   }
   update(dt) {
@@ -73,7 +78,8 @@ export class MapScene {
     const n = NODES[this.i];
     saveGame();
     if (n.id === 'den') { sfx('door'); transition(() => setScene(new DenScene({ fromDoor: true })), n.x, n.y); }
-    else if (n.locked) { sfx('deny'); toast('The Sunglass Greenhouse opens in the next build!'); }
+    else if (n.locked) { sfx('deny'); toast('Coming in the next build!'); }
+    else if (n.trail) { sfx('door'); transition(() => setScene(new TrailScene()), n.x, n.y); }
     else { sfx('select'); transition(() => setScene(new LevelScene(n.id)), n.x, n.y); }
   }
   openPause() {
@@ -111,7 +117,7 @@ export class MapScene {
     text(ctx, 'Foxhollows Square', 372, 250, { size: 22, color: '#5a4636', align: 'center' });
 
     // Bloomwood
-    for (const [tx, ty, s] of [[520, 420, 1], [640, 410, 1.1], [760, 400, 0.9], [880, 360, 1], [560, 250, 0.8], [700, 230, 0.9], [900, 260, 0.8], [770, 330, 0.7]]) {
+    for (const [tx, ty, s] of [[520, 420, 1], [640, 410, 1.1], [760, 400, 0.9], [880, 360, 1], [900, 260, 0.8], [770, 330, 0.7]]) {
       line(ctx, [[tx, ty], [tx, ty - 30 * s]], { rng, stroke: bc('#86603f'), lw: 4 });
       shape(ctx, ellipse(tx, ty - 44 * s, 26 * s, 22 * s, 14), { fill: bc('#f7c2d2'), rng, lw: 2 });
     }
@@ -131,13 +137,21 @@ export class MapScene {
       shape(ctx, ellipse(tx, ty - 6, 24, 18, 12), { fill: oc('#e0783a'), rng, lw: 2 });
     }
     text(ctx, 'Copperleaf Orchard', 250, 30, { size: 20, color: '#5a4636', align: 'center' });
-    // Still to come: the Sunglass Greenhouse and the Hollow Oak.
-    ctx.save(); ctx.globalAlpha = 0.6;
-    shape(ctx, rrect(436, 270, 70, 46, 6), { fill: fade('#cfeccd', 0.6), rng, lw: 2 });
-    line(ctx, [[471, 270], [471, 316]], { rng, lw: 1.4 });
-    text(ctx, 'Greenhouse ?', 471, 338, { size: 18, color: '#5a4636', align: 'center' });
-    line(ctx, [[520, 40], [522, 4]], { rng, stroke: fade('#6b4a30', 0.6), lw: 6 });
-    shape(ctx, ellipse(521, 6, 34, 18, 14), { fill: fade('#6f8f5a', 0.6), rng, lw: 2 });
+    // Sunglass Greenhouse (middle): a long glasshouse with palms inside.
+    const gc = (hex) => fade(hex, d.cleared['4-B'] ? 0.05 : d.stones.summer ? 0.35 : 0.6);
+    ctx.save(); ctx.globalAlpha = 0.9;
+    shape(ctx, [[432, 270], [432, 206], [462, 180], [758, 180], [790, 206], [790, 270]], { fill: gc('#cfeee4'), rng, lw: 2.4, step: 30 });
+    ctx.restore();
+    for (let gx = 466; gx <= 754; gx += 36) line(ctx, [[gx, 182], [gx, 270]], { rng, stroke: gc('#865b33'), lw: 1.6 });
+    for (const [px, py] of [[490, 262], [640, 262], [720, 262]]) {
+      line(ctx, [[px, py], [px + 2, py - 30]], { rng, stroke: gc('#7a5a3a'), lw: 3 });
+      shape(ctx, ellipse(px + 2, py - 34, 18, 8, 12), { fill: gc('#5aa86a'), rng, lw: 1.6 });
+    }
+    text(ctx, 'Sunglass Greenhouse', 610, 296, { size: 18, color: '#5a4636', align: 'center' });
+    // The Hollow Oak, at the far end of the Almanac Trail.
+    ctx.save(); ctx.globalAlpha = d.cleared['4-B'] ? 0.95 : 0.55;
+    line(ctx, [[540, 44], [542, 4]], { rng, stroke: fade('#6b4a30', 0.3), lw: 7 });
+    shape(ctx, ellipse(541, 6, 38, 20, 14), { fill: fade('#6f8f5a', 0.3), rng, lw: 2 });
     ctx.restore();
 
     // paths
@@ -165,7 +179,14 @@ export class MapScene {
         ctx.save(); ctx.globalAlpha = open ? 1 : 0.4;
         if (n.id === '1-B') drawPumpkin(ctx, n.x, n.y + 16, { scale: 0.2, boil: b, face: done ? 'dizzy' : 'angry' });
         else if (n.id === '2-B') { ctx.translate(n.x, n.y); ctx.scale(0.3, 0.3); drawPike(ctx, 0, 0, { boil: b, dizzy: done, facing: -1 }); }
-        else { ctx.translate(n.x, n.y + 24); ctx.scale(0.2, 0.2); drawScarecrow(ctx, 0, 0, { boil: b, dizzy: done }); }
+        else if (n.id === '3-B') { ctx.translate(n.x, n.y + 24); ctx.scale(0.2, 0.2); drawScarecrow(ctx, 0, 0, { boil: b, dizzy: done }); }
+        else { ctx.translate(n.x, n.y); ctx.scale(0.28, 0.28); drawSunMoth(ctx, 0, 0, { boil: b, t: this.t, dazed: done, shield: done ? 0 : 1 }); }
+        ctx.restore();
+      } else if (n.trail) {
+        ctx.save(); ctx.globalAlpha = open ? 1 : 0.45;
+        shape(ctx, rrect(n.x - 20, n.y - 16, 40, 30, 4), { fill: '#f3e3c3', rng: nr, lw: 2.4 });
+        for (let k = 0; k < 4; k++) dot(ctx, n.x - 12 + k * 8, n.y - 2, 3, ['#f08fae', '#f2b33d', '#d9662b', '#7fb6e0'][k]);
+        line(ctx, [[n.x, n.y - 16], [n.x, n.y + 14]], { rng: nr, lw: 1.6 });
         ctx.restore();
       } else {
         const col = n.locked ? '#c9c1b4' : done ? '#86c463' : open ? '#f2c14e' : '#d9cfbf';
@@ -189,7 +210,7 @@ export class MapScene {
       for (let k = 0; k < 3; k++) drawSeed(ctx, W / 2 + 160 + k * 26, H - 64, { ghost: !s[k], boil: b, t: 0 });
     }
     const secretNote = d.secrets?.[n.id] ? '  ★ Starbloom found' : '';
-    const sub = n.id === 'den' ? 'Your home: furniture, wardrobe and settings' : n.locked ? 'Coming in the next build' : d.cleared[n.id] ? 'Cleared! Play again to find more golden seeds' : 'Not cleared yet';
+    const sub = n.id === 'den' ? 'Your home: furniture, wardrobe and settings' : n.trail ? (this.unlocked(this.i) ? 'Twenty tricky levels that need every season' : 'Wake up the Greenhouse to open the trail') : n.locked ? 'Coming in the next build' : d.cleared[n.id] ? 'Cleared! Play again to find more golden seeds' : 'Not cleared yet';
     text(ctx, `${sub}${secretNote}   ·   ${fmt('{jump}')} to enter`, W / 2, H - 28, { size: 18, align: 'center', color: '#7a6656', ui: true });
 
     // lives + acorns (bottom right, clear of the regions at the top)
