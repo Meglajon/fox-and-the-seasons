@@ -15,6 +15,7 @@ import { sfx } from '../audio/sfx.js';
 import { playMusic, setLayer, setTempo, stopMusic, SEASON_LAYERS, musicBeat } from '../audio/music.js';
 import { getLevel, LEVEL_INFO, LEVEL_ORDER, ALMANAC_ORDER, OAK_ORDER } from './levels.js';
 import { Gear, SeasonClock, CLOCK_ORDER, drawClockDial } from './clock.js';
+import { Swing, Mover, Racer, drawRaceBar } from './gadgets.js';
 import { BLOCK_SEASON } from '../art/tiles.js';
 import { Player } from './player.js';
 import {
@@ -24,7 +25,7 @@ import { Vent, Pike, Scarecrow, Burrow, Starbloom } from './bosses.js';
 import { SunMoth } from './bosses2.js';
 import { drawThermo, drawGlowLamp } from '../art/critters3.js';
 import { RAINBOW } from '../art/critters2.js';
-import { DISTRICTS, npcLines, FINALE } from './story.js';
+import { DISTRICTS, npcLines, FINALE, INTROS, RACE_LOST } from './story.js';
 import { addAcorns, addLife, checkSeedRewards, unlockOutfit, grantFurniture } from './progress.js';
 import { Dialogue, Choice, LetterCard, Card, ListMenu, fmt } from '../ui/ui.js';
 import { SettingsCabinet } from '../ui/screens.js';
@@ -73,8 +74,10 @@ export class LevelScene {
       pushOverlay(new Dialogue(this.district.bossIntro, () => this.boss.start(this)));
     } else if (this.boss) this.boss.start(this);
     else if (this.data.intro && !this.introDone) {
+      // A level's story scene plays the first time you visit it.
       this.introDone = true;
-      pushOverlay(new Dialogue(FINALE.intro));
+      const seen = state.data.intros || (state.data.intros = {});
+      if (!seen[this.id]) { seen[this.id] = true; saveGame(); pushOverlay(new Dialogue(INTROS[this.data.intro])); }
     }
   }
   exit() { setTempo(1); }
@@ -151,6 +154,15 @@ export class LevelScene {
     for (const e of this.ents) if (e instanceof Gear && e.x + e.w / 2 < px - T) { e.dead = true; this.gears++; }
     this.ents = this.ents.filter((e) => !e.dead);
     this.player = new Player(px, py);
+    // Skill gadgets: swinging vines, moving platforms, and the caterpillar race.
+    const defLook = d.theme.startsWith('green') ? 'pot' : d.theme.startsWith('orchard') ? 'leaf' : 'plank';
+    this.movers = (d.movers || []).map((m) => new Mover({
+      x: m.x * T + (m.kind === 'circle' ? T / 2 : 0), y: (this.h - 1 - m.y) * T, w: m.w * T, dx: (m.dx || 0) * T, dy: -(m.dy || 0) * T,
+      period: m.period || 4, phase: (m.phase || 0) * Math.PI * 2, kind: m.kind || 'line', r: (m.r || 0) * T, look: m.look || defLook, dwell: m.dwell || 0,
+    }));
+    for (const s of d.swings || []) this.ents.push(new Swing(s.x * T + T / 2, (this.h - 1 - s.y) * T + T, s.len * T));
+    this.startX = start[0] * T + T / 2;
+    this.racer = d.race && this.bell ? new Racer(this, px, d.race.speed) : null;
     const own = this.district?.season;
     if (own && state.data.stones[own]) this.player.setSeason(own, true);
     else if (this.info.district >= 1 && state.data.stones.spring) this.player.setSeason('spring', true);
@@ -379,7 +391,7 @@ export class LevelScene {
     b.x = nx;
     let ny = b.y + b.vy * dt;
     const wasBottom = b.y + b.h;
-    b.onGround = false; b.gtile = null;
+    b.onGround = false; b.gtile = null; b.mover = null;
     const tx0 = Math.floor((b.x + 1) / T), tx1 = Math.floor((b.x + b.w - 1) / T);
     if (b.vy >= 0) {
       const ty = Math.floor((ny + b.h) / T);
@@ -392,6 +404,16 @@ export class LevelScene {
           if (!e.frozen || e.mode !== 'rest' || e.dead) continue;
           if (b.x + b.w > e.x + 3 && b.x < e.x + e.w - 3 && wasBottom <= e.y + 2 && ny + b.h >= e.y) {
             ny = e.y - b.h; b.vy = 0; b.onGround = true; break;
+          }
+        }
+      }
+      // Moving platforms: land on top (you can jump up through them from below).
+      // (A platform rising up under your feet picks you up, even off the ground.)
+      if (b === this.player && this.movers?.length) {
+        for (const m of this.movers) {
+          if (b.onGround && m.y > ny + b.h) continue;
+          if (b.x + b.w > m.x + 3 && b.x < m.x + m.w - 3 && wasBottom <= m.y + 6 + Math.max(0, -m.my) && ny + b.h >= m.y) {
+            ny = m.y - b.h; b.vy = 0; b.onGround = true; b.mover = m; break;
           }
         }
       }
@@ -481,6 +503,7 @@ export class LevelScene {
     if (this.godMode || p.star > 0 || p.inv > 0 || p.dead || this.state !== 'play') return;
     if (p.carry) this.dropCarry();
     p.climb = null;
+    if (p.swing) p.swing.release(p, false);
     const dir = srcX != null ? Math.sign(p.cx - srcX) || -p.facing : -p.facing;
     if (p.season && p.charm <= 0) {
       p.lastSeason = p.season; p.season = null; p.charm = 5; p.inv = 1.6;
@@ -494,6 +517,7 @@ export class LevelScene {
     if (p.dead) return;
     if (this.godMode && !fell) return;
     if (p.carry) this.dropCarry();
+    if (p.swing) p.swing.release(p, false);
     p.dead = true; p.deadT = 0; p.climb = null; p.vx = 0; p.vy = fell ? -300 : -650;
     if (!state.settings.infiniteLives) state.data.lives = Math.max(0, state.data.lives - 1);
     sfx('lose'); shake(6);
@@ -512,18 +536,15 @@ export class LevelScene {
       this.load();
       if (this.boss) this.boss.start(this);
       engine.irisX = this.player.cx - this.camX; engine.irisY = this.player.cy - this.camY;
-      if (state.settings.skipOffer && this.deathsAtCp >= 3 && this.canSkip()) this.offerSkip();
     }, W / 2, H / 2);
   }
-  canSkip() { return !this.boss && (this.cpIndex + 1 < this.lanterns.length || !!this.bell); }
-  offerSkip() {
-    pushOverlay(new Choice("This bit's tricky! Would you like to skip ahead?", ['Skip ahead', 'Keep trying'], (i) => {
-      if (i !== 0) return;
-      this.deathsAtCp = 0;
-      if (this.cpIndex + 1 < this.lanterns.length) this.cpIndex++;
-      else this.skipTo = this.data.vertical ? { x: this.bell.px - 3 * T, y: this.bell.base } : this.bell.px - 3 * T;
-      this.load();
-    }));
+  // ---------- the caterpillar race ----------
+  raceLost() {
+    const p = this.player;
+    if (this.state !== 'play' || p.dead) return;
+    this.state = 'lost'; p.frozen = true;
+    sfx('deny');
+    pushOverlay(new Dialogue(RACE_LOST, () => { p.frozen = false; this.state = 'play'; this.loseLife(true); }));
   }
   gameOver() {
     stopMusic(1);
@@ -536,6 +557,7 @@ export class LevelScene {
 
   // ---------- level end ----------
   finish(frac) {
+    if (this.racer && !this.racer.done) { this.racer.done = true; toast('You beat Pip to the bell!'); }
     this.state = 'clear';
     const p = this.player;
     p.frozen = true; p.inv = 0;
@@ -648,6 +670,13 @@ export class LevelScene {
     if (this.data.beat) this.updateBeat(dt);
     this.updateSeasonTiles(dt);
     if (this.data.beat) this.updateInside();
+    for (const m of this.movers) m.update(dt);
+    if (p.mover && p.onGround && !p.dead) { p.x += p.mover.mx; p.y += p.mover.my; }
+    if (this.racer) {
+      // Fennel waits at the line during the countdown.
+      if (this.racer.wait > 0 && this.state === 'play') { p.frozen = true; this.raceHold = true; }
+      else if (this.raceHold) { p.frozen = false; this.raceHold = false; sfx('select'); }
+    }
     if (!p.dead) p.update(dt, this);
     else { p.deadT += dt; p.vy += 1800 * dt; p.y += p.vy * dt; if (p.deadT > 1.3) this.afterDeath(); }
     this.updateCracks(dt);
@@ -662,6 +691,7 @@ export class LevelScene {
 
     for (const e of this.ents) e.update(dt, this);
     this.boss?.update(dt, this);
+    if (this.racer && this.state === 'play') this.racer.update(dt, this);
 
     // Water: Fennel splashes in (and loses a life); frogs float; other critters are swept away.
     for (const e of this.critters) {
@@ -883,7 +913,9 @@ export class LevelScene {
     }
 
     for (const g of this.data.glows || []) drawGlowLamp(ctx, g[0] * T + T / 2 - this.camX, (this.h - 1 - g[1]) * T + T / 2 - this.camY, this.time, engine.boil);
+    for (const m of this.movers) m.draw(ctx, this);
     for (const e of this.ents) if (e.mode !== 'carried') e.draw(ctx, this);
+    this.racer?.draw(ctx, this);
     this.boss?.draw(ctx, this);
     if (this.data.heatwave) this.drawSunbeams(ctx);
 
@@ -1080,6 +1112,15 @@ export class LevelScene {
   drawHUD(ctx) {
     const d = state.data, b = engine.boil;
     if (this.data.beat) drawClockDial(ctx, W / 2, 46, this.beat, this.gears, this.data.beat.gears, b);
+    if (this.racer) {
+      const span = Math.max(1, this.racer.finishX - this.startX);
+      drawRaceBar(ctx, W / 2 - 170, 36, 340, (this.player.cx - this.startX) / span, (this.racer.x - this.startX) / span, b);
+      const w = this.racer.wait;
+      if (w > 0 || this.racer.t < 3.1) {
+        const label = w > 0 ? String(Math.ceil(w / 0.8)) : 'GO!';
+        text(ctx, label, W / 2, H / 2 - 40, { size: w > 0 ? 96 : 80, align: 'center', color: '#b5503a', outline: '#fffaf0', outlineW: 10 });
+      }
+    }
     const lives = d.lives;
     const slots = Math.max(START_LIVES, Math.min(15, lives));
     panel(ctx, 12, 10, 26 + slots * 21, 50, { seed: 51, r: 14, boil: 0 });

@@ -26,10 +26,10 @@ export const NODES = [
   { id: '1-4', x: 812, y: 282 }, { id: '1-B', x: 842, y: 186 },
   { id: '2-1', x: 900, y: 112 }, { id: '2-2', x: 812, y: 78 }, { id: '2-3', x: 726, y: 118 },
   { id: '2-4', x: 642, y: 80 }, { id: '2-B', x: 560, y: 116 },
-  { id: '3-1', x: 452, y: 150 }, { id: '3-2', x: 360, y: 118 }, { id: '3-3', x: 268, y: 152 },
-  { id: '3-4', x: 182, y: 112 }, { id: '3-B', x: 96, y: 160 },
-  { id: '4-1', x: 462, y: 222 }, { id: '4-2', x: 534, y: 254 }, { id: '4-3', x: 606, y: 214 },
-  { id: '4-4', x: 678, y: 252 }, { id: '4-B', x: 752, y: 216 },
+  { id: '3-1', x: 452, y: 150 }, { id: '3-2', x: 386, y: 118 }, { id: '3-3', x: 320, y: 152 },
+  { id: '3-4', x: 254, y: 116 }, { id: '3-5', x: 190, y: 152 }, { id: '3-6', x: 128, y: 114 }, { id: '3-B', x: 68, y: 162 },
+  { id: '4-1', x: 446, y: 226 }, { id: '4-2', x: 500, y: 256 }, { id: '4-3', x: 556, y: 216 },
+  { id: '4-4', x: 612, y: 254 }, { id: '4-5', x: 668, y: 216 }, { id: '4-6', x: 722, y: 254 }, { id: '4-B', x: 774, y: 214 },
   { id: 'trail', x: 470, y: 66, label: 'The Almanac Trail', trail: true },
 ];
 
@@ -50,6 +50,7 @@ export class MapScene {
     const n = NODES[i];
     if (n.locked) return false;
     if (n.trail) return !!d.cleared['4-B'];
+    if (d.cleared[n.id]) return true;
     return !!d.cleared[NODES[i - 1].id];
   }
   update(dt) {

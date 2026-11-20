@@ -16,7 +16,8 @@ function finish(L, b, kit) {
 export async function g41() {
   const { kit, L, b } = await start('4-1');
   b.s('summer');
-  const ok = b.hop(158, 60) && finish(L, b, kit);
+  // (the moving-platform section after tile 156 is played by skilltest.extras('4-1'))
+  const ok = b.hop(155, 60);
   return { id: '4-1', ok, t: +b.t.toFixed(1) };
 }
 export async function g41seed() {
@@ -29,7 +30,8 @@ export async function g41seed() {
 export async function g42() {
   const { kit, L, b } = await start('4-2');
   b.s('summer');
-  const ok = b.hop(166, 60) && finish(L, b, kit);
+  // (the vines and pistons after tile 162 are played by skilltest.extras('4-2'))
+  const ok = b.hop(161, 60);
   return { id: '4-2', ok, t: +b.t.toFixed(1) };
 }
 export async function g43() {
@@ -45,8 +47,7 @@ export async function g43() {
     () => (b.s('spring'), b.flowerHop(97.5)),
     () => (b.s('summer'), b.run(110.6, false)),
     () => (b.s('autumn'), b.run(140)),
-    () => (b.s('summer'), b.run(176)),
-    () => finish(L, b, kit),
+    () => (b.s('summer'), b.run(167, false)), // the wheel, chimney and vines after this are played by skilltest.extras('4-3')
   ];
   for (let i = 0; i < steps.length; i++) if (!steps[i]()) return { id: '4-3', ok: false, step: i, x: +b.col().toFixed(1), row: +b.row().toFixed(1), dead: L.player.dead };
   return { id: '4-3', ok: true, t: +b.t.toFixed(1) };

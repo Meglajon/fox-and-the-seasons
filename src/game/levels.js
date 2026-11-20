@@ -21,7 +21,31 @@ class B {
   arc(x, y, n) { for (let i = 0; i < n; i++) this.set(x + i, y + Math.round(Math.sin((Math.PI * i) / (n - 1)) * 2), 'o'); return this; }
   put(x, y, c) { return this.set(x, y, c); }
   sign(x, y, txt) { this.set(x, y, 's'); this.signs[`${x},${this.h - 1 - y}`] = txt; return this; }
-  done(meta) { return { ...meta, w: this.w, h: this.h, rows: this.g.map((r) => r.join('')), signs: this.signs }; }
+  // A vine hanging from (x, y) (it swings from the bottom of that tile), len tiles long.
+  swing(x, y, len = 5) { (this.swings || (this.swings = [])).push({ x, y, len }); return this; }
+  // A moving platform w tiles wide, standing on row y+1 like a plank; it glides dx/dy tiles (dy up) and back.
+  mover(x, y, w, o = {}) { (this.movers || (this.movers = [])).push({ x, y, w, ...o }); return this; }
+  // Open up n empty columns at x (everything from x onwards moves right), to fit a new section in.
+  insert(x, n) {
+    for (const r of this.g) r.splice(x, 0, ...Array(n).fill('.'));
+    this.w += n;
+    const signs = {};
+    for (const [k, v] of Object.entries(this.signs)) { const [sx, sy] = k.split(',').map(Number); signs[`${sx >= x ? sx + n : sx},${sy}`] = v; }
+    this.signs = signs;
+    for (const o of [...(this.swings || []), ...(this.movers || [])]) if (o.x >= x) o.x += n;
+    return this;
+  }
+  // Insert one of the set pieces at x.
+  piece(x, k, o = {}) { const P = PIECES[k]; this.insert(x, P.w(o)); P.build(this, x, o); return this; }
+  done(meta) { return { ...meta, w: this.w, h: this.h, rows: this.g.map((r) => r.join('')), signs: this.signs, swings: this.swings, movers: this.movers }; }
+}
+
+// Fit a run of set pieces into a hand-made level at x (on solid ground), and note where they went.
+function addPieces(b, x, list) {
+  const at = [];
+  for (const [k, o = {}] of list) { b.piece(x, k, o); at.push([k, x, o]); x += PIECES[k].w(o); }
+  b.extras = at;
+  return b;
 }
 
 function l01() {
@@ -461,7 +485,9 @@ function l32() {
   b.put(162, 2, 'g');
   b.put(170, 2, 'E');
   b.fill(179, 179, 2, 12, 'r');
-  return b.done({ id: '3-2', name: 'Windy Rows', theme: 'orchard', secret: 'S3' });
+  b.sign(157, 2, 'A vine! Jump into it to grab on. Hold ← → to swing higher, then press {jump} to let go.');
+  addPieces(b, 160, [['swing', { n: 6 }], ['piles', { n: 4 }], ['swing', { n: 8 }]]);
+  return b.done({ id: '3-2', name: 'Windy Rows', theme: 'orchard', secret: 'S3', extras: b.extras });
 }
 
 function l33() {
@@ -492,7 +518,9 @@ function l33() {
   b.arc(156, 5, 5);
   b.put(170, 2, 'E');
   b.fill(179, 179, 2, 13, 'r');
-  return b.done({ id: '3-3', name: 'Cider Press', theme: 'orchard' });
+  b.sign(160, 2, 'Cider barrels on the move! Watch the dotted line to see where each one goes.');
+  addPieces(b, 162, [['mover', { n: 7 }], ['hopplats', { k: 3 }]]);
+  return b.done({ id: '3-3', name: 'Cider Press', theme: 'orchard', extras: b.extras });
 }
 
 function l34() {
@@ -517,7 +545,7 @@ function l34() {
   b.plat(7, 47, 4); b.put(7, 48, 'U');
   b.fill(8, 20, 56, 56, '#');
   b.put(14, 57, 'E');
-  return b.done({ id: '3-4', name: 'Leaf Storm', theme: 'orchard' });
+  return b.done({ id: '3-4', name: 'Leaf Storm', theme: 'orchard', vertical: true });
 }
 
 function l3b() {
@@ -563,7 +591,8 @@ function l41() {
   b.arc(152, 5, 4);
   b.put(160, 2, 'E');
   b.fill(169, 169, 2, 12, 'r');
-  return b.done({ id: '4-1', name: 'Greenhouse Gate', theme: 'green', stone: 'summer' });
+  addPieces(b, 156, [['mover', { n: 8 }]]);
+  return b.done({ id: '4-1', name: 'Greenhouse Gate', theme: 'green', stone: 'summer', extras: b.extras });
 }
 
 function l42() {
@@ -593,7 +622,9 @@ function l42() {
   b.put(160, 2, 'c');
   b.put(168, 2, 'E');
   b.fill(179, 179, 2, 13, 'r');
-  return b.done({ id: '4-2', name: 'Potting Sheds', theme: 'green', secret: 'S4', dark: true, glows: [[20, 9, 110], [60, 9, 110], [110, 8, 110], [156, 9, 110]] });
+  addPieces(b, 162, [['swings', { k: 2 }], ['hopplats', { k: 3 }]]);
+  return b.done({ id: '4-2', name: 'Potting Sheds', theme: 'green', secret: 'S4', dark: true, extras: b.extras,
+    glows: [[20, 9, 110], [60, 9, 110], [110, 8, 110], [156, 9, 110], [170, 10, 110], [186, 10, 110], [200, 9, 110]] });
 }
 
 function l43() {
@@ -622,7 +653,8 @@ function l43() {
   b.arc(162, 5, 5);
   b.put(178, 2, 'E');
   b.fill(189, 189, 2, 14, 'r');
-  return b.done({ id: '4-3', name: 'Four-Season House', theme: 'green' });
+  addPieces(b, 168, [['wheel'], ['shaft'], ['swings', { k: 2, len: [5, 4] }]]);
+  return b.done({ id: '4-3', name: 'Four-Season House', theme: 'green', extras: b.extras });
 }
 
 function l44() {
@@ -706,6 +738,68 @@ function s4() {
   return b.done({ id: 'S4', name: 'Secret: Sunny Nook', theme: 'green' });
 }
 
+// ======================= Skill levels (autumn onwards) =======================
+// These lean on timing and control rather than critters: vines, moving platforms, races and wall-jumps.
+function l35() {
+  return trail('3-5', 'Rope Swing Grove', [
+    ['swing', { n: 6 }], ['swing', { n: 8 }], ['swings', { k: 2 }], ['piles', { n: 6 }], ['swing', { n: 10, len: 6 }],
+    ['swings', { k: 3, len: [5, 4, 6] }], ['ventglide', { n: 10 }], ['swings', { k: 3, thorns: true }], ['swings', { k: 4, len: [5, 6, 4, 5] }],
+  ], { theme: 'orchard', noCritters: true, sign: 'Vines! Jump into one to grab it. Hold ← → to swing higher, then {jump} to let go. {up} and {down} climb the vine.' });
+}
+function l36() {
+  return trail('3-6', 'Caterpillar Dash', [
+    ['piles', { n: 5 }], ['swing', { n: 6 }], ['mover', { n: 7 }], ['pond', { n: 6 }], ['shaft'], ['flowerwall'], ['swings', { k: 2 }], ['piles', { n: 8 }],
+  ], { theme: 'orchard', noCritters: true, race: { speed: 290 }, intro: 'race1' });
+}
+function l45() {
+  // Glasshouse Spire: one long wall-jump climb, up four chimneys to the very top of the glasshouse.
+  const b = new B(16, 70);
+  b.fill(0, 0, 0, 69, 'r'); b.fill(15, 15, 0, 69, 'r'); b.fill(0, 15, 69, 69, 'r');
+  b.ground(1, 14); b.put(2, 2, 'P');
+  b.sign(3, 2, 'The Glasshouse Spire! Jump into a wall, then jump again to bounce off it. Bounce between the walls to climb.');
+  // chimney 1: two wide
+  b.fill(5, 5, 4, 16, 'r'); b.fill(8, 8, 2, 16, 'r'); b.acorns(6, 9, 2);
+  b.fill(8, 14, 16, 16, '#'); b.put(12, 17, 'C'); b.put(2, 12, 'G'); b.plat(1, 11, 2);
+  // chimney 2: three wide (harder)
+  b.fill(10, 10, 20, 32, 'r'); b.fill(14, 14, 17, 32, 'r'); b.acorns(11, 25, 3);
+  b.fill(1, 10, 32, 32, '#'); b.put(3, 33, 'C'); b.put(12, 34, 'G');
+  // chimney 3: along the outer wall, with a lift to catch your breath halfway
+  b.fill(3, 3, 36, 48, 'r'); b.mover(5, 32, 2, { dy: 7, period: 5, dwell: 0.3 });
+  b.fill(3, 13, 48, 48, '#'); b.put(9, 49, 'C'); b.acorns(1, 42, 1);
+  // chimney 4: two wide, to the top
+  b.fill(11, 11, 51, 60, 'r'); b.fill(14, 14, 49, 60, 'r'); b.put(12, 56, 'G');
+  b.fill(4, 11, 60, 60, '#');
+  b.put(6, 61, 'E');
+  return b.done({ id: '4-5', name: 'Glasshouse Spire', theme: 'green', vertical: true });
+}
+function l46() {
+  return trail('4-6', 'Potting Bench Rides', [
+    ['mover', { n: 8 }], ['hopplats', { k: 3 }], ['lift'], ['mud', { n: 6 }], ['wheel'], ['hopplats', { k: 4, period: 2.6 }],
+    ['mover', { n: 12, period: 4 }], ['lift', { period: 3.5 }], ['wheel', { period: 5.5 }], ['hopplats', { k: 4, period: 2.2, dy: 5 }],
+  ], { theme: 'green', noCritters: true, sign: 'The potting benches are on the move! Follow the dotted lines and hop on at the right moment.' });
+}
+function a17() {
+  // Thawing Heights: a wall-jump climb through every season.
+  const b = new B(16, 68);
+  b.fill(0, 0, 0, 67, 'r'); b.fill(15, 15, 0, 67, 'r'); b.fill(0, 15, 67, 67, 'r');
+  b.ground(1, 14); b.put(2, 2, 'P');
+  b.sign(4, 2, 'Climb! Freeze the falling water to wall-jump off it, and melt the ice that blocks your way.');
+  // Winter: a chimney with a waterfall for one wall
+  b.fill(10, 10, 4, 15, 'r'); b.fill(13, 13, 2, 15, 'w'); b.fill(14, 14, 2, 15, '#');
+  b.fill(1, 10, 15, 15, '#'); b.put(2, 16, 'C'); b.put(11, 9, 'G');
+  // Summer: up the left side, through a cap of ice
+  b.fill(3, 3, 18, 29, 'r'); b.fill(1, 2, 30, 30, 'j'); b.fill(3, 12, 30, 30, '#'); b.put(10, 31, 'C');
+  // Autumn: leaves make a floor for the gust vent; glide back over to the left
+  b.fill(13, 14, 30, 30, 'p'); b.put(13, 31, 'U'); b.put(13, 37, 'G');
+  b.fill(1, 11, 39, 39, '#');
+  // Spring: climb the vine; then Winter again for the last waterfall chimney
+  b.put(10, 40, 'v'); b.fill(1, 9, 46, 46, '#'); b.acorns(4, 47, 3);
+  b.fill(3, 3, 50, 60, 'w'); b.fill(4, 4, 50, 60, 'r');
+  b.fill(4, 10, 60, 60, '#');
+  b.put(8, 61, 'E');
+  return b.done({ id: 'A-17', name: 'Thawing Heights', theme: 'almanac', vertical: true });
+}
+
 const BUILDERS_TRAIL = {};
 // ======================= The Almanac Trail: 20 tricky levels that mix all four seasons =======================
 // Each level is a run of hand-made "set pieces" joined by short stretches of ground. Every set piece
@@ -768,6 +862,62 @@ export const PIECES = {
       for (let k = 1; k < n - 1; k += 3) b.fill(x + k, Math.min(x + k + 1, x + n - 2), 1, 1, 'i');
     },
     seed: (o) => [Math.floor((o.n || 12) / 2), 5],
+  },
+  // --- skill pieces: vines, moving platforms, wall-jump shafts ---
+  swing: {
+    // One vine over a pit: jump into it, pump to build up the swing, and let go at the top.
+    w: (o) => 6 + (o.n || 8),
+    build(b, x, o) { const n = o.n || 8; b.ground(x, x + 2); b.ground(x + 3 + n, x + 5 + n); b.swing(x + 3 + Math.floor(n / 3), 10, o.len || 5); },
+    seed: (o) => [3 + Math.floor((o.n || 8) / 2), 10],
+  },
+  swings: {
+    // A chain of vines over a long pit (k vines, gap tiles apart).
+    w: (o) => 6 + (o.k || 3) * (o.gap || 6) + 2,
+    build(b, x, o) {
+      const k = o.k || 3, g = o.gap || 6, n = k * g + 2;
+      b.ground(x, x + 2); b.ground(x + 3 + n, x + 5 + n);
+      for (let i = 0; i < k; i++) b.swing(x + 5 + i * g, 10, o.len ? o.len[i % o.len.length] : 5);
+      if (o.thorns) b.fill(x + 3, x + 2 + n, 0, 1, 'b');
+    },
+    seed: (o) => [3 + Math.floor(((o.k || 3) * (o.gap || 6)) / 2), 10],
+  },
+  mover: {
+    // A platform gliding back and forth across a pit.
+    w: (o) => 6 + (o.n || 8),
+    build(b, x, o) { const n = o.n || 8; b.ground(x, x + 2); b.ground(x + 3 + n, x + 5 + n); b.mover(x + 3, 1, 2, { dx: n - 2, period: o.period || n * 0.6, look: o.look, dwell: 0.2 }); },
+    seed: (o) => [3 + Math.floor((o.n || 8) / 2), 5],
+  },
+  hopplats: {
+    // Platforms bobbing up and down out of step, like pistons. Hop across in time.
+    w: (o) => 6 + (o.k || 3) * 4 + 1,
+    build(b, x, o) {
+      const k = o.k || 3, n = k * 4 + 1;
+      b.ground(x, x + 2); b.ground(x + 3 + n, x + 5 + n);
+      for (let i = 0; i < k; i++) b.mover(x + 4 + i * 4, 1, 2, { dy: o.dy || 4, period: o.period || 3, phase: i / k, look: o.look });
+    },
+    seed: (o) => [3 + Math.floor((o.k || 3) * 2), 8],
+  },
+  wheel: {
+    // Three platforms riding round a wheel over a pit.
+    w: () => 18,
+    build(b, x, o) { b.ground(x, x + 2); b.ground(x + 15, x + 17); for (let i = 0; i < 3; i++) b.mover(x + 9, 4, 2, { kind: 'circle', r: 3.2, period: o.period || 7, phase: i / 3, look: o.look }); },
+    seed: () => [9, 5],
+  },
+  lift: {
+    // A lift up the side of a tall wall: ride it up and step off at the top.
+    w: () => 11,
+    build(b, x, o) { b.ground(x, x); b.mover(x + 1, 1, 2, { dy: 8, period: o.period || 5, look: o.look, dwell: 0.3 }); b.fill(x + 3, x + 8, 0, 9, '#'); b.ground(x + 9, x + 10); },
+    seed: () => [6, 11],
+  },
+  shaft: {
+    // Wall-jump up between the pillar and the wall, then drop down the far side.
+    w: (o) => 13 + ((o.wide || 2) - 2),
+    build(b, x, o) {
+      const s = o.wide || 2, top = o.top || 12;
+      b.ground(x, x + 1 + s); b.fill(x + 1, x + 1, 5, top, 'r');
+      b.fill(x + 2 + s, x + 8 + s, 0, top, '#'); b.fill(x + 9 + s, x + 10 + s, 0, 6, '#');
+    },
+    seed: (o) => [2, (o.top || 12) - 1],
   },
   // --- several seasons ---
   meltglide: {
@@ -864,36 +1014,40 @@ const TRAIL = [
     { sign: 'The Almanac Trail! Every season, in any order. Switch with {next} and {prev}.' }],
   ['A-2', 'Puddle Hop', [['quickmix'], ['pond', { n: 10 }], ['vine'], ['mud', { n: 8 }]],
     { sign: 'Water, leaves, then mud: Winter, Autumn, Summer. Each one is just a press of {next}!' }],
-  ['A-3', 'Mill Run', [['falls'], ['piles', { n: 8 }], ['heatwall'], ['pond', { n: 8 }]]],
-  ['A-4', 'Bramble & Bake', [['thornflower'], ['mudflower'], ['ventglide', { n: 10 }], ['icewall']]],
+  ['A-3', 'Mill Run', [['falls'], ['piles', { n: 8 }], ['mover', { n: 7 }], ['heatwall'], ['pond', { n: 8 }]]],
+  ['A-4', 'Bramble & Bake', [['thornflower'], ['mudflower'], ['swing', { n: 8 }], ['ventglide', { n: 10 }], ['icewall']]],
   ['A-5', 'Lantern Lane', [['mud', { n: 6 }], ['flowerwall'], ['pond', { n: 8 }], ['heatwall'], ['cactustunnel']],
     { dark: true, critters: ['n', 'g', 'n', 'c'], sign: 'Dark again! Summer lights the way, but you might need the other seasons too.' }],
-  ['A-6', 'Meltwater', [['meltglide'], ['quickmix'], ['floes', { n: 10 }]]],
-  ['A-7', 'Upside Orchard', [['ventglide', { n: 12 }], ['pilevent'], ['vineice'], ['pond', { n: 10 }]]],
+  ['A-6', 'Meltwater', [['meltglide'], ['quickmix'], ['hopplats', { k: 3 }], ['floes', { n: 10 }]]],
+  ['A-7', 'Swinging Orchard', [['ventglide', { n: 12 }], ['swings', { k: 3 }], ['pilevent'], ['swing', { n: 10, len: 6 }], ['vineice'], ['swings', { k: 3, len: [5, 6, 4] }]],
+    { sign: 'Vines all the way! Hold ← → to swing higher, and let go at the top of the swing.' }],
   ['A-8', 'The Long Thaw', [['pond', { n: 8 }], ['mud', { n: 6 }], ['piles', { n: 6 }], ['floes', { n: 10 }], ['quickmix'], ['pond', { n: 10 }]],
     { autoscroll: 115, gap: 4, noCritters: true }],
-  ['A-9', 'Sun & Snow', [['iceonice'], ['mudflower'], ['falls']],
+  ['A-9', 'Sun & Snow', [['iceonice'], ['mudflower'], ['lift'], ['falls']],
     { sign: 'An ice wall in the pond! Freeze, melt, then freeze again before the ice thaws.' }],
-  ['A-10', 'Night Garden', [['vine'], ['cactustunnel'], ['quickmix'], ['heatwall'], ['mud', { n: 10 }]],
+  ['A-10', 'Night Garden', [['vine'], ['cactustunnel'], ['swings', { k: 2 }], ['quickmix'], ['heatwall'], ['mud', { n: 10 }]],
     { dark: true, critters: ['n', 'n', 'g', 'n'] }],
-  ['A-11', 'Heat Shimmer', [['mud', { n: 8 }], ['icewall'], ['pond', { n: 10 }], ['piles', { n: 8 }], ['quickmix']],
+  ['A-11', 'Heat Shimmer', [['mud', { n: 8 }], ['icewall'], ['mover', { n: 8 }], ['pond', { n: 10 }], ['piles', { n: 8 }], ['quickmix']],
     { heatwave: HW, critters: ['c', null, 'g'] }],
-  ['A-12', 'Cliffside', [['cliffmeltglide'], ['falls'], ['ventglide', { n: 12 }]]],
-  ['A-13', 'Floe Fields', [['floes', { n: 14 }], ['iceonice'], ['floes', { n: 12 }], ['quickmix']]],
-  ['A-14', 'Four Corners', [['flowerwall'], ['meltglide'], ['pilevent'], ['mudflower']]],
-  ['A-15', 'Dark Mill', [['falls'], ['iceonice'], ['cactustunnel'], ['vineice']],
+  ['A-12', 'Clockwork Cliffs', [['cliffmeltglide'], ['wheel'], ['lift'], ['hopplats', { k: 4, period: 2.6 }], ['falls'], ['mover', { n: 12 }], ['ventglide', { n: 12 }]],
+    { sign: 'Everything moves on the cliffs! Watch the dotted lines.' }],
+  ['A-13', 'Floe Fields', [['floes', { n: 14 }], ['iceonice'], ['hopplats', { k: 3, period: 2.6 }], ['floes', { n: 12 }], ['quickmix']]],
+  ['A-14', 'Race Through the Year', [['flowerwall'], ['swing', { n: 8 }], ['meltglide'], ['pilevent'], ['shaft'], ['mudflower'], ['mover', { n: 8 }]],
+    { noCritters: true, race: { speed: 375 }, intro: 'race3' }],
+  ['A-15', 'Dark Mill', [['falls'], ['iceonice'], ['shaft'], ['cactustunnel'], ['vineice']],
     { dark: true, critters: ['n', 'c', 'n'] }],
   ['A-16', 'Hurry, Seasons!', [['quickmix'], ['pond', { n: 10 }], ['mud', { n: 10 }], ['piles', { n: 10 }], ['quickmix'], ['floes', { n: 12 }]],
     { autoscroll: 130, gap: 4, noCritters: true }],
-  ['A-17', 'Thawing Heights', [['meltglide'], ['cliffmeltglide'], ['vineice'], ['iceonice', { n: 14 }]]],
-  ['A-18', 'High Noon', [['mudflower'], ['quickmix'], ['iceonice'], ['piles', { n: 10 }], ['mud', { n: 10 }]],
+  ['A-17', 'Thawing Heights', [], { custom: a17 }],
+  ['A-18', 'High Noon', [['mudflower'], ['quickmix'], ['hopplats', { k: 3 }], ['iceonice'], ['piles', { n: 10 }], ['mud', { n: 10 }]],
     { heatwave: { ...HW, speed: -130, burn: 0.75 }, critters: ['c', 'g', null] }],
-  ['A-19', 'Midnight Almanac', [['meltglide'], ['quickmix'], ['pilevent'], ['floes', { n: 12 }]],
-    { dark: true, critters: ['n', 'c', 'n'], glowsEvery: 12 }],
-  ['A-20', "The Year's End", [['cliffmeltglide'], ['iceonice', { n: 14 }], ['meltglide'], ['quickmix'], ['falls'], ['ventglide', { n: 14 }]],
+  ['A-19', 'Midnight Almanac', [['meltglide'], ['swings', { k: 3 }], ['quickmix'], ['wheel'], ['pilevent'], ['floes', { n: 12 }]],
+    { dark: true, critters: ['c', 'n', 'n'], glowsEvery: 12 }],
+  ['A-20', "The Year's End", [['cliffmeltglide'], ['swings', { k: 4, len: [5, 4, 6, 5] }], ['iceonice', { n: 14 }], ['meltglide'], ['shaft', { wide: 3 }], ['quickmix'], ['hopplats', { k: 4, period: 2.2 }], ['falls'], ['ventglide', { n: 14 }]],
     { sign: 'The last stretch before the Hollow Oak. Good luck, little fox!' }],
 ];
 for (const [id, name, pieces, meta] of TRAIL) BUILDERS_TRAIL[id] = () => {
+  if (meta?.custom) return meta.custom();
   const lv = trail(id, name, pieces, meta);
   // Dim little lamps along dark levels so there's always something to aim for.
   if (meta?.dark) { lv.glows = []; for (let gx = 14; gx < lv.w; gx += meta.glowsEvery || 16) lv.glows.push([gx, 10, 90]); }
@@ -906,8 +1060,8 @@ export const ALMANAC_INFO = Object.fromEntries(TRAIL.map(([id, name]) => [id, { 
 // T=Thimble  Q=clock gear  W=the Season Clock  1/2=tick/tock beat blocks  5-8=season blocks (spring, summer, autumn, winter)
 function o1() {
   // Oak Roots: every critter Fennel has met, waiting among the roots, with every season mixed in.
-  return trail('O-1', 'Oak Roots', [['flowerwall'], ['quickmix'], ['falls'], ['cactustunnel'], ['pilevent'], ['iceonice'], ['thornflower'], ['meltglide'], ['mudflower'], ['ventglide', { n: 12 }]], {
-    theme: 'oakroots', fade: 0.25, critters: ['g', 'd', 'e', 'h', 'q', 'c', 'n'],
+  return trail('O-1', 'Oak Roots', [['flowerwall'], ['quickmix'], ['swings', { k: 3 }], ['falls'], ['cactustunnel'], ['pilevent'], ['wheel'], ['iceonice'], ['thornflower'], ['shaft', { wide: 3 }], ['meltglide'], ['mudflower'], ['ventglide', { n: 12 }]], {
+    theme: 'oakroots', fade: 0.25, critters: ['g', 'd', 'e', 'h', 'q', 'c', 'n'], race: { speed: 400 }, intro: 'race4',
     sign: "The roots of the Hollow Oak. It looks like every critter in Foxhollows followed you here!",
     decorate(b, at) {
       // a buzzer and a moth flitting over the first stretches
@@ -1001,13 +1155,13 @@ export const OAK_ORDER = ['O-1', 'O-2', 'O-3'];
 const BUILDERS = {
   '0-1': l01, '0-2': l02, '1-1': l11, '1-2': l12, '1-3': l13, '1-4': l14, '1-B': l1b,
   '2-1': l21, '2-2': l22, '2-3': l23, '2-4': l24, '2-B': l2b,
-  '3-1': l31, '3-2': l32, '3-3': l33, '3-4': l34, '3-B': l3b,
-  '4-1': l41, '4-2': l42, '4-3': l43, '4-4': l44, '4-B': l4b,
+  '3-1': l31, '3-2': l32, '3-3': l33, '3-4': l34, '3-5': l35, '3-6': l36, '3-B': l3b,
+  '4-1': l41, '4-2': l42, '4-3': l43, '4-4': l44, '4-5': l45, '4-6': l46, '4-B': l4b,
   S0: s0, S1: s1, S2: s2, S3: s3, S4: s4,
   'O-1': o1, 'O-2': o2, 'O-3': o3,
 };
 Object.assign(BUILDERS, BUILDERS_TRAIL);
-export const LEVEL_ORDER = ['0-1', '0-2', '1-1', '1-2', '1-3', '1-4', '1-B', '2-1', '2-2', '2-3', '2-4', '2-B', '3-1', '3-2', '3-3', '3-4', '3-B', '4-1', '4-2', '4-3', '4-4', '4-B'];
+export const LEVEL_ORDER = ['0-1', '0-2', '1-1', '1-2', '1-3', '1-4', '1-B', '2-1', '2-2', '2-3', '2-4', '2-B', '3-1', '3-2', '3-3', '3-4', '3-5', '3-6', '3-B', '4-1', '4-2', '4-3', '4-4', '4-5', '4-6', '4-B'];
 export const LEVEL_INFO = {
   '0-1': { name: 'Morning in Foxhollows', district: 0, music: 'map', seeds: 3 },
   '0-2': { name: 'Rooftop Ramble', district: 0, music: 'map', seeds: 3 },
@@ -1025,11 +1179,15 @@ export const LEVEL_INFO = {
   '3-2': { name: 'Windy Rows', district: 3, music: 'orchard', seeds: 3 },
   '3-3': { name: 'Cider Press', district: 3, music: 'orchard', seeds: 3 },
   '3-4': { name: 'Leaf Storm', district: 3, music: 'orchard', seeds: 3 },
+  '3-5': { name: 'Rope Swing Grove', district: 3, music: 'orchard', seeds: 3 },
+  '3-6': { name: 'Caterpillar Dash', district: 3, music: 'orchard', seeds: 3 },
   '3-B': { name: 'The Prize Scarecrow', district: 3, music: 'boss', seeds: 0 },
   '4-1': { name: 'Greenhouse Gate', district: 4, music: 'glass', seeds: 3 },
   '4-2': { name: 'Potting Sheds', district: 4, music: 'glass', seeds: 3 },
   '4-3': { name: 'Four-Season House', district: 4, music: 'glass', seeds: 3 },
   '4-4': { name: 'Heatwave', district: 4, music: 'glass', seeds: 3 },
+  '4-5': { name: 'Glasshouse Spire', district: 4, music: 'glass', seeds: 3 },
+  '4-6': { name: 'Potting Bench Rides', district: 4, music: 'glass', seeds: 3 },
   '4-B': { name: 'The Sunlamp Moth', district: 4, music: 'boss', seeds: 0 },
   S0: { name: 'Secret: Chimney Cubby', district: 0, music: 'map', seeds: 0, secret: true },
   S1: { name: 'Secret: Petal Hollow', district: 1, music: 'bloom', seeds: 0, secret: true },

@@ -86,7 +86,6 @@ function assistDrawer() {
   return new ListMenu({
     title: 'Assist drawer',
     items: [
-      { label: 'Offer a skip after 3 tries', value: () => onOff(s.skipOffer), left: () => setS('skipOffer', !s.skipOffer), right: () => setS('skipOffer', !s.skipOffer) },
       { label: 'Infinite lives', value: () => onOff(s.infiniteLives), left: () => setS('infiniteLives', !s.infiniteLives), right: () => setS('infiniteLives', !s.infiniteLives) },
       { label: 'Game speed', value: () => (s.slow ? '80%' : '100%'), left: () => setS('slow', !s.slow), right: () => setS('slow', !s.slow) },
     ],

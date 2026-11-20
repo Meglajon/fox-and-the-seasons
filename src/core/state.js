@@ -3,7 +3,7 @@ const KEY = 'foxseasons.v1';
 
 export const DEFAULT_SETTINGS = {
   music: 0.7, sfx: 0.8, crackle: true, bindings: null,
-  skipOffer: true, infiniteLives: false, slow: false,
+  infiniteLives: false, slow: false,
   shake: true, cbSymbols: false, textSize: 1, lastSlot: 0, touch: 'auto',
 };
 

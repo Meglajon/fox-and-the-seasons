@@ -4,6 +4,7 @@ import { input, bindName } from '../core/input.js';
 import { panel, text, wrap, INK, setFont, shape, ellipse, rngFor, dot } from '../art/ink.js';
 import { sfx } from '../audio/sfx.js';
 import { state } from '../core/state.js';
+import { drawPip } from '../game/gadgets.js';
 import { drawThimble, drawJuniper, drawSign, drawPumpkin, drawStoneGem } from '../art/critters.js';
 import { drawFox } from '../art/fox.js';
 import { SEASON_COLOR } from '../art/palettes.js';
@@ -121,6 +122,7 @@ export function portrait(ctx, who, x, y, t) {
   else if (who === 'rook') drawRook(ctx, x - 6, y + 80, { boil: b, t });
   else if (who === 'pike') { ctx.translate(x, y + 10); ctx.scale(0.55, 0.55); drawPike(ctx, -30, 0, { boil: b }); }
   else if (who === 'basil') drawBasil(ctx, x - 4, y + 60, { boil: b, t });
+  else if (who === 'pip') drawPip(ctx, x + 14, y + 30, { boil: b, t, facing: 1 });
   else if (who === 'sunmoth') { ctx.translate(x, y + 16); ctx.scale(0.5, 0.5); drawSunMoth(ctx, 0, 0, { boil: b, t, shield: 1 }); }
   ctx.restore();
   ctx.beginPath(); ctx.arc(x, y, 46, 0, Math.PI * 2);
@@ -129,7 +131,7 @@ export function portrait(ctx, who, x, y, t) {
 
 const NAMES = {
   thimble: 'Thimble', juniper: 'Juniper', sign: 'Sign', pumpkin: 'The Overgrown Pumpkin', stone: '',
-  puddle: 'Captain Puddle', rook: 'Mrs. Rook', pike: 'Old Pike', basil: 'Basil', sunmoth: 'The Sunlamp Moth',
+  puddle: 'Captain Puddle', rook: 'Mrs. Rook', pike: 'Old Pike', basil: 'Basil', sunmoth: 'The Sunlamp Moth', pip: 'Pip',
 };
 
 export class Dialogue {

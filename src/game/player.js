@@ -18,6 +18,7 @@ export class Player {
     this.inv = 0; this.charm = 0; this.season = null; this.lastSeason = null; this.bubble = 0;
     this.t = 0; this.phase = 0; this.squash = 0; this.bounceHold = 0;
     this.dead = false; this.frozen = false; this.star = 0;
+    this.swing = null; this.grabCool = 0; this.mover = null;
   }
   get cx() { return this.x + this.w / 2; }
   get cy() { return this.y + this.h / 2; }
@@ -38,6 +39,7 @@ export class Player {
 
   update(dt, world) {
     this.t += dt;
+    if (this.grabCool > 0) this.grabCool -= dt;
     if (this.inv > 0) this.inv -= dt;
     if (this.star > 0) this.star -= dt;
     if (this.charm > 0) {
@@ -53,6 +55,7 @@ export class Player {
       return;
     }
     if (world.canSeason && (input.pressed('next') || input.pressed('prev'))) this.cycleSeason(input.pressed('next') ? 1 : -1);
+    if (this.swing) { this.swing.ride(this, dt, world); return; }
     if (this.climb) { this.updateClimb(dt); return; }
 
     const sprint = input.down('sprint');
@@ -65,7 +68,11 @@ export class Player {
     const maxV = (sprint ? 370 : 240) * (this.star > 0 ? 1.25 : 1) * (this.inMudNow ? 0.3 : 1);
     // Frozen water and ice floes are slippery: slow to start, slow to stop.
     const ice = this.onGround && world.onIce?.(this);
-    if (dir) {
+    // Just let go of a vine: keep the swing's speed for a moment instead of braking in the air.
+    if (this.fling > 0) this.fling = this.onGround ? 0 : this.fling - dt;
+    const flinging = this.fling > 0 && Math.abs(this.vx) > maxV && (dir === 0 || dir === Math.sign(this.vx));
+    if (flinging) this.vx *= Math.pow(0.85, dt);
+    else if (dir) {
       const turning = Math.sign(this.vx) === -dir;
       const acc = this.onGround ? (ice ? 650 : turning ? 3000 : 1600) : 1150;
       if (Math.abs(this.vx) <= maxV || turning) this.vx = approach(this.vx, dir * maxV, acc * dt);
@@ -121,6 +128,8 @@ export class Player {
     world.move(this, dt);
     if (this.onGround && !was) {
       this.squash = 0.2;
+      // landing from a big vine launch: don't skid off the ledge
+      if (Math.abs(this.vx) > 370) this.vx = Math.sign(this.vx) * 300;
       if (this.landVy > 300) { sfx('land'); world.dust?.(this.cx, this.bottom, 5); }
     }
     this.landVy = this.vy;
@@ -153,7 +162,7 @@ export class Player {
 
   pose() {
     if (this.dead) return 'hurt';
-    if (this.climb) return 'climb';
+    if (this.climb || this.swing) return 'climb';
     if (!this.onGround) return this.wall ? 'fall' : this.vy < 0 ? 'jump' : 'fall';
     if (Math.abs(this.vx) > 20) return 'run';
     return 'idle';

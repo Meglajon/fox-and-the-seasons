@@ -90,6 +90,25 @@ export const DISTRICTS = {
 
 export const SEASON_DISTRICT = { spring: 1, winter: 2, autumn: 3, summer: 4 };
 
+// Pip the caterpillar's races. You have to beat Pip to the bell to clear the level.
+export const RACE_LOST = [{ who: 'pip', text: 'Ding-ding! I got to the bell first. Want another go? Best of... lots!' }];
+export const RACES = {
+  race1: [
+    { who: 'pip', text: "Oh, hello! I'm Pip, the fastest caterpillar in all of Copperleaf. Fancy a race to the bell?" },
+    { who: 'pip', text: "I'll crawl over everything, and I can climb straight up walls. You'll have to be quick AND clever. Ready?" },
+  ],
+  race2: [
+    { who: 'pip', text: 'You again! I have been training on the potting benches. Race you to the bell!' },
+    { who: 'pip', text: 'Swing, hop, and ride the pots. No dawdling!' },
+  ],
+  race3: [
+    { who: 'pip', text: 'The Almanac Trail! I know every shortcut through every season. One more race?' },
+  ],
+  race4: [
+    { who: 'pip', text: 'The roots of the Hollow Oak! This is my last and greatest race. Catch me if you can!' },
+  ],
+};
+
 // The Hollow Oak: meeting Thimble, winding the Season Clock, and the ending.
 export const FINALE = {
   intro: [
@@ -152,3 +171,5 @@ export function npcLines(who, d, talks) {
   }
   return [];
 }
+
+export const INTROS = { thimble: FINALE.intro, ...RACES };
